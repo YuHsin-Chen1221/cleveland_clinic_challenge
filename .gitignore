@@ -1,13 +1,14 @@
-# Track ONLY the LaTeX proposal — ignore everything else in this folder
+# Track only the proposals in docs/ + repo meta; ignore everything else
+# (data/, scripts/, challenge statement, notes stay local)
 *
-
-# Keep the LaTeX source, its compiled PDF, and repo meta
-!Quantum_Approach_to_Undruggable_Targets_Proposal.tex
-!Quantum_Approach_to_Undruggable_Targets_Proposal.pdf
-!README.md
 !.gitignore
+!README.md
+!docs/
+docs/*
+!docs/*.tex
+!docs/*.pdf
 
-# LaTeX build artifacts (in case a build runs in-tree)
+# LaTeX build artifacts (never track, even under docs/)
 *.aux
 *.log
 *.out
