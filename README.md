@@ -10,27 +10,17 @@ N×N connectivity matrix, ranked for allosteric residues by connectivity to the 
 ## Repository structure
 
 ```
-docs/                         proposals + labeling rules (tracked)
+docs/                         proposals + labeling rules
   QSW_Allosteric_Proposal.{tex,pdf}                 canonical proposal
   Quantum_Approach_to_Undruggable_Targets_Proposal.{tex,pdf}   earlier version
   rules.md                    ground-truth labeling spec (X / Y / S rules + preconditions)
 
-data/                         datasets (only the two final CSVs are tracked)
+data/
   validation_data.csv         the 4 challenge targets (KRAS, BCR-ABL1, myosin, c-Myc)
   training/allosteric_training.csv   integrated ASD + AlloBench set (1,333 entries)
-  asd/, allobench/            raw source dumps (local only)
 
-results/                      outputs (only encodings/ is tracked; pdb_cache/ is local)
+results/
   encodings/<target>/         3-feature Hermitian H per target: H,W,c,Phi (.npy) + nodes.csv + summary.json
-
-scripts/                      pipeline code (local only)
-  encoding.py                 build the 3-feature Hermitian H (contacts + ESM-2 + ANM phase)
-  ground_truth.py             the labeling rules as functions (4 A scan, UniProt active site, mapping)
-  config.py                   load validation targets from data/validation_data.csv
-  run_encoding.py             encode the compliant targets -> results/encodings/
-  build_training_set.py       integrate + dedup + filter ASD/AlloBench -> training CSV
-  build_validation_csv.py     apply the functions to the challenge targets -> validation CSV
-  validate_asd_rule.py        validate the 4 A rule against ASD's curated lists
 ```
 
 ## Datasets — shared schema
