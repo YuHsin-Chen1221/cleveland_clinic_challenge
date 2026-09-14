@@ -1,0 +1,550 @@
+% =====================================================================
+%  A Training-Free Quantum-Walk Scanner for Cryptic Allosteric Sites
+%  Global Quantum + AI Challenge 2026 - Cleveland Clinic
+%  Phase I Concept Proposal
+%
+%  Compile with:  pdflatex main.tex   (twice, for references)
+% =====================================================================
+\documentclass[10pt,a4paper]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{mathptmx}   % Times-like serif; swap for lmodern/newtxtext if available
+\usepackage{microtype}
+\usepackage{changepage}
+\usepackage{multicol}
+\usepackage{quantikz}
+\usepackage[margin=2.2cm,top=2.1cm,bottom=2.0cm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage[hidelinks]{hyperref}
+\usepackage{caption}
+
+% --- spacing / headings -----------------------------------------------
+\setlength{\parskip}{0.3em}
+\setlength{\parindent}{0pt}
+\titlespacing*{\section}{0pt}{0.8em}{0.3em}
+\titlespacing*{\subsection}{0pt}{0.55em}{0.2em}
+\titleformat{\section}{\normalfont\large\bfseries}{\thesection.}{0.6em}{}
+\titleformat{\subsection}{\normalfont\bfseries\itshape}{\thesubsection}{0.6em}{}
+\captionsetup{font=footnotesize,labelfont=bf,skip=3pt}
+\setlist[enumerate]{itemsep=2pt,topsep=3pt,parsep=0pt,leftmargin=1.6em}
+\setlist[itemize]{itemsep=2pt,topsep=3pt,parsep=0pt,leftmargin=1.4em}
+
+% --- convenience macros ------------------------------------------------
+\newcommand{\Mhat}{\hat{M}}
+\newcommand{\lead}[1]{\textbf{\textit{#1}}}
+
+\begin{document}
+
+% =====================================================================
+\begin{center}
+  {\LARGE\bfseries A Training-Free Quantum-Walk Scanner\\[0.25em]
+   for Cryptic Allosteric Sites in Undruggable Proteins\par}
+  \vspace{0.9em}
+  {\small Global Quantum + AI Challenge 2026 $\cdot$ Cleveland Clinic Enterprise Challenge
+   $\cdot$ Phase~I Concept Proposal\par}
+\end{center}
+\vspace{0.6em}
+
+% ---------------------------------------------------------------- abstract
+\begin{center}\textbf{Abstract}\end{center}
+\begin{adjustwidth}{1.2cm}{1.2cm}
+\small
+Over 85\% of disease-causing proteins are considered undruggable, and for these the only viable
+strategy is allostery. We propose a training-free scanner that takes an apo structure and
+blind-predicts distal regulatory pockets. Contact topology and evolutionary conservation are encoded
+as a sparse Hermitian Hamiltonian, and signal propagation is the circuit $e^{-iHt}$ acting on an
+active-site source state. The readout is the average mixing matrix of that evolution: a deterministic
+spectral object, doubly stochastic, with no free time parameter and no training, which is itself the
+$N\times N$ connectivity matrix the challenge requires. Residues are ranked by degree-deconfounded
+connectivity to the active site, standardised against background, which is the statistic the
+challenge uses for scoring. An active-site-anchored Krylov projection reduces the walk to a
+one-dimensional chain that preserves source-to-residue transport exactly, decoupling qubit count from
+protein length and bounding two-qubit depth independently of system size. Because no parameters are
+fitted, all four targets serve purely as blind tests, and a Lindblad dephasing sweep places the
+classical diffusive baseline at an endpoint of the same model.
+\end{adjustwidth}
+\vspace{0.5em}
+
+% =====================================================================
+\section{Understanding of the Problem}
+
+The stated need is a scanner placed upstream of screening: it ingests static structures of targets
+already shelved as undruggable and returns a probability map of cryptic and allosteric sites, so
+library design can be aimed at regions mechanistically connected to disease function.
+
+Three properties of the problem constrain any solution. The pockets are cryptic, so scanning for
+surface concavity misses them by construction, which is why we do not use pocket geometry as a
+filter. The signal is dynamic: a site is allosteric because perturbation there reaches the active
+site, so the method must model propagation. And molecular-dynamics trajectories are excluded, ruling
+out the methods that currently dominate cryptic-pocket discovery.
+
+The elastic-network hypothesis makes the problem tractable. If contact topology drives collective
+dynamics, a protein reduces to a graph and atomic force fields can be set aside; the Gaussian Network
+Model reproduces crystallographic B-factors from a single-parameter C$\alpha$ contact
+network~\cite{bahar1997}, and topology-driven signal propagation is well
+established~\cite{chennubhotla2007}. A graph is also the natural setting for a quantum walk.
+
+% =====================================================================
+\section{Prior Work and the Gap}
+
+\lead{Classical graph methods.} Elastic network models~\cite{bahar1997,atilgan2001} predict
+fluctuations and collective modes from topology; Estrada communicability
+$e^{A}$~\cite{estrada2008} measures diffusive connectivity. The strongest published result in our
+exact setting is bond-to-bond propensity analysis, which recovers allosteric sites knowing only the
+orthosteric site~\cite{amor2016}. These are fast, MD-free and the honest baselines; their common
+feature is that propagation is diffusive.
+
+\lead{Pocket and learned predictors.} fpocket scores geometric concavity but cannot see a pocket
+closed in the apo state. The state of the art for cryptic sites is PocketMiner, a graph neural
+network reaching ROC-AUC $0.87$ on 39 confirmed cryptic pockets~\cite{meller2023}. Its constraint is
+supervision: labelled apo--holo data is scarce (ASBench, a few hundred
+entries~\cite{asbench2015}; CASBench, 91 enzymes), limiting generalisation to
+novel targets. A training-free method sidesteps this.
+
+\lead{Quantum approaches.} Continuous-time quantum walks are mature, with a spectral theory of the
+average mixing matrix~\cite{godsil2013}; open-system generalisations interpolate between quantum and
+classical walks~\cite{whitfield2010}; noise-assisted transport is characterised in the photosynthetic
+literature~\cite{mohseni2008,rebentrost2009}; complex edge phases yield directed
+walks~\cite{lu2016}. Most directly, unitary CTQW centrality was recently applied to
+residue interaction networks with an IBM hardware demonstration~\cite{mohtashim2026}.
+
+\lead{The gap.} Existing quantum work on residue networks is centrality-based on purely topological
+graphs: it asks which residues are structurally important, not which are \emph{specifically coupled
+to the active site}, and leaves the coherence assumption unexamined at physiological temperature. We
+differ in five respects: (i) evolutionary conservation enters as on-site energy on the diagonal,
+adding functional prior without densifying $H$ or breaking Hermiticity; (ii) an optional chiral phase
+from elastic-network mode direction breaks time-reversal symmetry, giving a \emph{directed}
+connectivity matrix no symmetric classical measure can express; (iii) coarse-graining is anchored on
+the active site by a Krylov projection preserving source transport exactly; (iv) the deliverable is a
+deterministic, training-free spectral object; and (v) the coherent fraction is swept, not fixed.
+
+% =====================================================================
+\section{Technical Approach}
+
+\subsection{Hamiltonian encoding}
+
+Nodes are residues, which keeps the output at the residue resolution the deliverable requires. $H$
+is sparse and Hermitian:
+\begin{equation}
+H_{ij} = w_{ij}\,e^{i\varphi_{ij}} \quad (i \neq j), \qquad H_{ii} = c_i .
+\end{equation}
+Three physically distinct channels are fused, each entering a different part of $H$ so that none
+destroys the sparsity or the Hermiticity of the others.
+
+\emph{Off-diagonal magnitude $w_{ij}$ --- mechanical topology.} Nodes are residues represented by
+C$\alpha$; an edge exists where the C$\alpha$--C$\alpha$ distance falls within $7.3$~\AA, optionally
+weighted by heavy-atom contact counts at $4.5$~\AA. This is the contact network underlying the
+Gaussian Network Model, whose Kirchhoff matrix is $\Gamma = D - A$. We borrow the \emph{contact
+graph} only, with no GNM mode decomposition: the dynamics is
+generated by $H$, not by $\Gamma$'s slow modes. The graph is naturally sparse (degree 6--10), which
+bounds circuit cost downstream. Geometry beyond connectivity enters through the phase channel rather
+than as a separate distance matrix, which would be largely redundant with the mechanical contacts.
+
+\emph{Diagonal $c_i$ --- evolutionary prior.} Per-residue conservation from ESM-2
+enters as on-site energy. Carrying the functional prior on the diagonal injects sequence information
+without adding edges, so $H$ stays sparse and Hermitian and the circuit cost is unchanged. This
+channel separates the method from purely topological prior work, and is accompanied by an ablation
+against the topology-only configuration.
+
+\emph{Phase $\varphi_{ij}$ --- directionality (optional).} The projection of the lowest
+anisotropic-network-model mode along edge $(i,j)$~\cite{atilgan2001} supplies a complex phase; ANM is
+an analytic eigenproblem of the elastic Hessian, not a sampling procedure, so this stays within the
+no-MD constraint. Channels are z-scored before fusion and asymmetric inputs symmetrised.
+
+Hermiticity holds channel by channel: $c_i$ real gives $H_{ii} = \overline{H_{ii}}$; contacts are
+symmetrised as $(A + A^{\mathsf T})/2$; antisymmetric phases $\varphi_{ji} = -\varphi_{ij}$ give
+$H_{ji} = \overline{H_{ij}}$. With phases $H$ is complex Hermitian but non-symmetric: still a valid
+walk, yet capable of directed connectivity~\cite{lu2016}. Since only phase around cycles is
+physical, we gauge-fix and assert $\lVert H - H^{\dagger}\rVert_F < 10^{-10}$ as a pre-flight check.
+All inputs derive from apo coordinates and sequence, and the anisotropic modes are an analytic
+eigenproblem rather than MD sampling, so the no-MD constraint is satisfied.
+
+\subsection{Readout: the average mixing matrix}
+
+The propagator is $U(t) = e^{-iHt}$. Its long-time average mixing matrix is a deterministic spectral
+object~\cite{godsil2013}:
+\begin{equation}
+\Mhat_{ij}
+  = \lim_{T\to\infty}\frac{1}{T}\int_{0}^{T}\bigl|\langle j|e^{-iHt}|i\rangle\bigr|^{2}\,dt
+  = \Bigl(\sum_{r} E_r \circ E_r\Bigr)_{ij},
+\end{equation}
+where $E_r$ are the spectral idempotents of $H$ and $\circ$ is the Schur product. $\Mhat$ is doubly
+stochastic, positive semidefinite, carries no free time parameter and requires no training. It is
+delivered directly as the $N\times N$ connectivity matrix. Its quantum content is explicit: $\Mhat$
+is fixed by coherent interference between eigenspaces, and is mathematically distinct from classical
+communicability $e^{A}$~\cite{estrada2008} on the same graph.
+
+Two numerical points bear on the readout. Averaging over all $t$ can suppress the
+constructive-interference peaks that motivate the walk, and the idempotent grouping in~(2) is
+ill-conditioned under near-degenerate spectra. We therefore benchmark $\Mhat$ against a time-resolved
+score on the same graph and report a degeneracy-tolerance scan alongside it, so the choice of readout
+rests on measured discrimination.
+
+\subsection{Ranking metric}
+
+Because $\Mhat$ is doubly stochastic, raw connectivity is confounded by degree: hub residues score
+highly by construction. The ranking metric must therefore express \emph{specific} coupling to the
+active site $S$ relative to background:
+\begin{equation}
+s(j) = \sum_{i \in S} w_i \Mhat_{ij}, \qquad
+\rho(j) = \frac{s(j)}{\sum_{k} \Mhat_{kj}}, \qquad
+z(j) = \frac{\rho(j) - \mu_{\mathrm{bg}}}{\sigma_{\mathrm{bg}}},
+\end{equation}
+with $\mu_{\mathrm{bg}}$ and $\sigma_{\mathrm{bg}}$ taken from background residues (non-active,
+non-neighbour surface residues and non-functional pockets). The primary ranking statistic $z(j)$ is
+by construction the same quantity the challenge's primary objective tests, which removes any
+mismatch between what we optimise and what we are scored on, and avoids the degenerate solution of
+ranking hubs.
+
+\lead{Hit selection.} We exclude $S$ and its first neighbours, enforce a distal constraint
+(C$\alpha$--C$\alpha$ $> 12$~\AA\ from $S$), then take the five highest $z(j)$, merging spatially
+adjacent residues into one hit. Pocket-ness is not used as a filter: cryptic pockets are closed in apo structures and fpocket will
+miss them, so a hard druggability gate would defeat the purpose of the task. For targets with formed pockets we cluster high-$z$ residues and annotate pocket-ness as
+a druggability flag; for c-Myc, disordered and without a static pocket, the annotation is off.
+
+\subsection{Active-site-anchored dimensionality reduction}
+
+Ranking requires only the source-to-all transport vector $\langle j|e^{-iHt}|\psi_S\rangle$, and
+that dynamics is spanned \emph{exactly} by the Krylov subspace $\mathcal{K}_K(H,\psi_S) =
+\operatorname{span}\{|\psi_S\rangle, H|\psi_S\rangle, \dots, H^{K-1}|\psi_S\rangle\}$ generated from
+the normalised source state $|\psi_S\rangle = \sum_{i \in S} a_i |i\rangle$. Lanczos iteration
+orthogonalises it via
+\begin{equation}
+\beta_r |q_{r+1}\rangle = H|q_r\rangle - \alpha_r |q_r\rangle - \beta_{r-1}|q_{r-1}\rangle,
+\qquad \alpha_r = \langle q_r | H | q_r \rangle,
+\end{equation}
+giving $Q = [q_1 \cdots q_K]$ with $q_1 = |\psi_S\rangle$ and a tridiagonal projection
+$H_K = Q^{\dagger} H Q$ carrying $\alpha_r$ on the diagonal and $\beta_r$ off it. Since
+$Q^{\dagger}|\psi_S\rangle = e_1$,
+\begin{equation}
+\langle j|e^{-iHt}|\psi_S\rangle = [Q]_{j,:}\; e^{-iH_K t}\; e_1 ,
+\end{equation}
+so source transport is preserved exactly in $K$ dimensions. For the quantity that determines the
+ranking, retention under coarse-graining is therefore an algebraic identity, not an empirical overlap
+measure, which is what the challenge asks to be demonstrated. Generic spectral clustering
+preserves only generic modes and destroys within-cluster residue resolution~\cite{novo2015}. We use $K = 32$--$64$ for analysis and
+$K = 8$--$16$ on hardware, decoupling qubit count from protein length. The delivered $N \times N$
+$\Mhat$ is computed by exact eigendecomposition at full resolution (single-particle walks live in $N$
+dimensions, so this is polynomial and trivial for $N \approx 300$--$1000$); the Krylov route supplies
+the hardware track, and agreement between the two is a required consistency check.
+
+\subsection{Coherence sweep}
+
+Interference here is a modelling choice, not a claim about physiological coherence. Embedding $H$ in
+a quantum stochastic walk~\cite{whitfield2010} weights coherent and incoherent channels by a single
+parameter $p \in [0,1]$:
+\begin{equation}
+\frac{d\rho}{dt}
+ = -\,i(1-p)\,[H,\rho]
+ \;+\; p\sum_{i,j}\Bigl(L_{ij}\,\rho\,L_{ij}^{\dagger}
+        - \tfrac{1}{2}\bigl\{L_{ij}^{\dagger}L_{ij},\,\rho\bigr\}\Bigr),
+\end{equation}
+with jump operators $L_{ij} = \sqrt{\gamma_{ij}}\,|i\rangle\langle j|$ acting only along existing
+edges, so both channels share the same topology. At $p \to 0$ only the von Neumann term survives and
+the dynamics is the coherent walk $e^{-iHt}$; at $p \to 1$ the diagonal elements obey the classical
+master equation with generator $L$, giving $e^{-Lt}$. Sweeping $p$ serves three purposes at once: it is the \emph{ablation}, since the classical
+control is our own endpoint on an identical graph and generator, not a separate model; it is
+the \emph{noise-resilience study}, since environment-assisted transport predicts an interior optimum
+on disordered graphs~\cite{rebentrost2009}; and it answers the challenge's observation that
+classical approximations are too linear. We additionally report
+$\Delta(j) = \Mhat[S,j] - e^{A}[S,j]$ to isolate the interference contribution against classical
+communicability.
+
+\subsection{Learning components and quantum advantage}
+
+The predictor is training-free, its principal robustness argument. Learning appears only where it
+cannot leak: ESM-2 supplies the conservation diagonal, ablated against the topology-only
+configuration; Bayesian optimisation sets the two to four thresholds by leave-one-protein-out on a
+disjoint calibration set; and a language-model layer turns the ranked output into a structured brief,
+so chemists can use the tool without quantum training.
+
+Single-particle walks are classically polynomial, and we claim no speed-up: predictions come from
+exact classical simulation, which the challenge permits as a quantum-inspired approach. The quantum content is the physics of the model, coherent interference
+evidenced by discriminative gain over $e^{A}$, plus a credible near-term hardware path. Genuine
+hardware advantage arises only for multiple simultaneous excitations under exchange coupling, where
+the state space grows as $\binom{N}{m}$ ($\binom{100}{3} = 161{,}700$, $\binom{100}{5} =
+75{,}287{,}520$), beyond open-system classical simulation; that regime is a Phase~II stretch goal.
+
+\subsection{Circuit specification and resource estimate}
+
+$H_K$ is tridiagonal, hence a one-dimensional open chain with on-site energies $\alpha_r$ and
+nearest-neighbour hoppings $\beta_r$. The Krylov step therefore maps an arbitrary protein contact
+topology onto the structure near-term hardware executes best: no long-range couplings, no SWAP overhead, full parallelisation.
+
+We use a unary encoding: $K$ Krylov basis states map to $K$ qubits, the working space being the
+Hamming-weight-one sector. Figure~1 gives the resulting circuit. Because the chain is
+one-dimensional, two odd/even layers exhaust every bond, so \emph{two-qubit depth is independent of
+$K$} and set only by the Trotter number $r$, which answers the coherence-time constraint directly. Gate counts follow immediately: $2(K-1)r$ two-qubit gates at a two-qubit depth of $4r$.
+
+\begin{figure}[t]
+\centering
+\scalebox{0.92}{\begin{quantikz}[column sep=4pt,row sep=5pt,transparent]
+\lstick{$q_1$} & \gate{X} & \gate{R_z(\alpha_1)}\gategroup[6,steps=3,style={dashed,rounded corners,inner sep=3pt}]{} & \gate[2]{\mathrm{XY}(\beta_1)} & \qw & \meter{} \\
+\lstick{$q_2$} & \qw & \gate{R_z(\alpha_2)} & & \gate[2]{\mathrm{XY}(\beta_2)} & \meter{} \\
+\lstick{$q_3$} & \qw & \gate{R_z(\alpha_3)} & \gate[2]{\mathrm{XY}(\beta_3)} & & \meter{} \\
+\lstick{$q_4$} & \qw & \gate{R_z(\alpha_4)} & & \gate[2]{\mathrm{XY}(\beta_4)} & \meter{} \\
+\lstick{$q_5$} & \qw & \gate{R_z(\alpha_5)} & \gate[2]{\mathrm{XY}(\beta_5)} & & \meter{} \\
+\lstick{$q_6$} & \qw & \gate{R_z(\alpha_6)} & & \qw & \meter{}
+\end{quantikz}}
+\caption{The propagation circuit at $K=6$; production runs use $K=8$--$16$ with identical structure.
+The dashed block is one Trotter step, repeated $r$ times. State preparation is the single $X$ gate,
+since $|\psi_S\rangle$ is $e_1$ in the Krylov basis; each step applies the diagonal $\alpha_r$ as
+parallel $R_z$ rotations, then the off-diagonal $\beta_r$ as two layers of
+$\mathrm{XY}(\beta)=\exp[-i\beta(XX+YY)/2]$ on odd and even bonds, each compiling to two CNOTs plus
+single-qubit rotations. Measurement is in the computational basis; shots outside Hamming weight one
+are discarded.}
+\end{figure}
+
+\begin{table}[t]
+\caption{Circuit cost and coherence budget. Duration assumes ${\sim}120$\,ns per two-qubit layer;
+bare fidelity is $(0.994)^{n_{2Q}}$ at a representative superconducting two-qubit error rate. Device
+values are read from Braket device properties at run time.}
+\footnotesize
+\begin{tabularx}{\textwidth}{@{}lcccccX@{}}
+\toprule
+\textbf{Config.} & \textbf{Qubits} & \textbf{2Q gates} & \textbf{2Q depth} & \textbf{Duration} & \textbf{Bare fidelity} & \textbf{Role}\\
+\midrule
+$K=8$, $r=10$   & 8  & 140  & 40 & ${\sim}5\,\mu$s  & $0.43$   & Headline hardware run\\
+$K=16$, $r=10$  & 16 & 300  & 40 & ${\sim}5\,\mu$s  & $0.16$   & Hardware, with post-selection\\
+$K=16$, $r=20$  & 16 & 600  & 80 & ${\sim}10\,\mu$s & $0.03$   & Trotter convergence, simulator\\
+$K=32$, $r=20$  & 32 & 1240 & 80 & ${\sim}10\,\mu$s & $<0.01$  & Simulator only\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\lead{Reading the coherence budget.} Two limits must be separated. Circuit \emph{duration} sits
+comfortably inside coherence: ${\sim}5\,\mu$s against superconducting $T_2$ of tens of microseconds
+is a ratio of ${\sim}0.1$, so the walk does not decohere mid-evolution. The binding constraint is
+\emph{accumulated gate error}: 300 two-qubit gates at $99.4\%$ leave a bare success probability of
+$0.16$. Hence the headline run is $K=8$ and not the largest circuit we can write, $r$ is the smallest
+value passing a simulator Trotter-convergence test, and $K=32$ is declared simulator-only. Post-selection on
+excitation number turns much of the residual error into \emph{discarded} shots instead of biased estimates,
+which is why it is the primary mitigation and ZNE only the secondary one.
+
+\lead{Readout, platform and budget.} Sampling 64 quasi-random evolution times gives $\Mhat[S,\cdot]$
+directly, since the excited qubit labels the Krylov basis vector; results project back to residues by
+$Q$. Shot counts assume 2000 shots per time point with a $1.5\times$ post-selection allowance, giving
+${\sim}1\%$ absolute error on probabilities of order $1/K$. Because the chain is one-dimensional, all-to-all connectivity buys us
+nothing: superconducting devices on Braket (IQM, Rigetti) are both the technical and economic fit,
+with per-shot rates one to two orders of magnitude below trapped-ion alternatives, and program sets
+allow the 64 time points to go as a single task. Classiq provides depth-constrained synthesis across
+Trotter orders under a fixed coherence budget; we report depth before and after optimisation rather
+than merely noting the tool was used. A full campaign (SV1 validation, DM1 noise modelling at
+$K \le 12$, a headline run with zero-noise extrapolation, a $K$-scaling study, a second target and a
+cross-platform check) totals roughly $1.5\times10^{6}$ shots, on the order of a minute of pure QPU
+time; it is dominated by queueing and classical pre/post-processing, not device time.
+
+% =====================================================================
+\section{Implementation Plan}
+
+Phase~I delivers this specification; Phase~II builds and validates it. The circuit of Section~3.7 is
+the defining construction; because its single-excitation sector is exactly solvable, the same $\Mhat$
+is computed classically at full resolution, serving as both deliverable and hardware reference, so no
+milestone depends on device availability.
+
+\begin{enumerate}
+\item \lead{Structure and features.} Fetch apo structures, select the catalytic domain, strip waters
+      and heteroatoms, build the heavy-atom contact graph, and compute per-residue conservation.
+\item \lead{Hamiltonian assembly.} Fuse magnitudes, diagonal and optional phases with z-score
+      normalisation; gauge-fix; assert Hermiticity.
+\item \lead{Readout.} Exact eigendecomposition to $\Mhat$, with the degeneracy-tolerance scan and the
+      time-resolved comparison.
+\item \lead{Ranking.} Compute $s$, $\rho$ and $z$; apply distal and neighbour filters; return the top
+      five residues with optional pocket annotation.
+\item \lead{Coherence sweep.} Lindblad dephasing scan from $p = 0$ to $p = 1$, reported against
+      $e^{A}$ and $e^{-Lt}$.
+\item \lead{Validation.} Blind runs on the four targets, then extended generalisation runs, against
+      all baselines in Section~5.
+\item \lead{Hardware.} Execute the circuits of Section~3.7 on Braket, verifying the quantum $\Mhat$
+      against the classical one under post-selection and zero-noise extrapolation.
+\end{enumerate}
+
+\begin{table}[t]
+\caption{Data and tools. No training set is required.}
+\small
+\begin{tabularx}{\textwidth}{@{}lX@{}}
+\toprule
+\textbf{Purpose} & \textbf{Source or tool}\\
+\midrule
+Required targets & RCSB PDB: 4OBE$\to$6OIM, 1OPL$\to$5MO4, 5TBY$\to$6C1H, 1NKP (c-Myc)\\
+Calibration and generalisation & ASD, ASBench, CASBench; leave-one-protein-out, disjoint from targets\\
+Structure and features & BioPython, ProDy (contact graph, ANM modes), fair-esm (ESM-2 conservation)\\
+Simulation and readout & NumPy / SciPy eigendecomposition for $\Mhat$; QuTiP for the Lindblad sweep\\
+Circuits and hardware & Qiskit, AWS Braket SDK, Classiq (synthesis, depth optimisation), Mitiq (ZNE)\\
+Baselines and output & fpocket, NetworkX, ProDy GNM centrality; PyMOL and browser viewer; LLM brief\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\lead{Schedule (17 Nov 2026 to 28 Feb 2027).} Weeks 1--3, structure pipeline, Hamiltonian assembly,
+classical baselines. Weeks 4--6, $\Mhat$ readout, ranking metric, degeneracy and time-resolved
+comparisons. Weeks 7--8, blind runs with full statistics. Weeks 9--10, coherence sweep and
+calibration. Weeks 11--12, generalisation on ASD. Week 13, hardware demonstration. Weeks 14--15,
+interpretation layer, visualisation, final report.
+
+\lead{Deliverables.} (i) The $N\times N$ connectivity matrix $\Mhat$ at full residue resolution.
+(ii) Ranked top-five allosteric residues per target by $z(j)$. (iii) This methodological report,
+identifying $\Mhat$ as the quantum metric and coherent interference between eigenspaces as its link
+to biological signal transmission. (iv) An interactive 3D connectivity map showing the protein
+coloured by $z(j)$ with predicted site and propagation paths, in PyMOL and a browser viewer. The map,
+not the matrix, is the artefact a chemist acts on, and the language-model brief accompanies it.
+
+% =====================================================================
+\section{Validation Plan}
+
+\begin{table}[t]
+\caption{Blind validation targets. The apo structure is the sole input; holo defines ground truth
+only after predictions are frozen.}
+\small
+\begin{tabularx}{\textwidth}{@{}lcclc@{}}
+\toprule
+\textbf{Target} & \textbf{Apo} & \textbf{Holo} & \textbf{Site to blind-predict} & \textbf{Ref.}\\
+\midrule
+KRAS G12C       & 4OBE & 6OIM & Cryptic Switch-II pocket (sotorasib)            & \cite{ostrem2013}\\
+BCR-ABL1        & 1OPL & 5MO4 & Distal myristoyl pocket (asciminib)             & \cite{wylie2017}\\
+Cardiac myosin  & 5TBY & 6C1H & Site stabilising the super-relaxed state        & \cite{anderson2018}\\
+c-Myc           & 1NKP & ---  & Myc--Max interface; pocket annotation disabled  & ---\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\lead{Ground truth and controls.} Positive labels come from the holo structure and are used only after predictions are frozen: after
+superposition onto apo coordinates, residues with a heavy atom within $4.5$~\AA\ of an
+allosteric-ligand heavy atom are labelled allosteric, with indices mapped back through the apo--holo
+alignment. Two negative sets match the controls named in the challenge. Random background draws
+surface residues excluding the active site, its first neighbours and the labelled site.
+Non-functional pockets are fpocket pockets on the apo structure overlapping neither the active site
+nor any annotated functional site, scored by the same $z(j)$. The second is the stricter test, since
+it excludes the possibility that the method merely separates pocket-like from non-pocket-like
+surface.
+
+\lead{Metrics and statistical tests.} Per target we report residue-level ROC-AUC, top-5 and top-10 hit rate, enrichment at top-$k$, and the
+minimum C$\alpha$ distance from each predicted residue to the true site centre. Significance is
+tested against each negative set by Mann--Whitney $U$ and by a permutation test resampling residues
+matched on solvent accessibility and distance from the active site, so a geometric confound cannot
+produce a significant result on its own. We report $p$-values with rank-biserial effect sizes and
+bootstrap intervals on ROC-AUC. A target passes when both tests reach $p<0.05$ after Holm correction
+across targets and the true site appears in the top five.
+
+\lead{Baselines and ablations.} Baselines run on the identical graph wherever possible: classical communicability
+$e^{A}$~\cite{estrada2008}, classical diffusion $e^{-Lt}$, GNM centrality, bond-to-bond
+propensity~\cite{amor2016} as the strongest published method in this setting, PocketMiner at ROC-AUC
+$0.87$~\cite{meller2023} as the learned reference, and a random ranking. The two that share our graph
+and generator are decisive, since they separate the contribution of interference from that of graph
+structure. Ablations remove one component at a time: the conservation diagonal, the chiral phase, the
+degree deconfounding in $\rho(j)$, and the background standardisation, with the readout additionally
+swapped between $\Mhat$ and a time-resolved score. Each ablation is reported as a $\Delta$ROC-AUC so
+the contribution of every channel is quantified.
+
+\lead{Robustness.} Noise resilience is assessed on the metric, not only on the state. We sweep the dephasing parameter
+$p$, simulate gate-error and finite-coherence models on DM1 at $K\le 12$, and report the Spearman
+correlation between noisy and noiseless $z(j)$ with the top-5 overlap: what matters is whether the
+ranking survives, not whether the state does. Coarse-graining fidelity uses the same two measures
+between full-resolution $\Mhat$ and its Krylov reduction across $K=8,12,16,32,64$, complementing the
+exactness identity of~(5) with an empirical curve showing where truncation begins to matter.
+
+\lead{Blind protocol and reproducibility.} No parameters are fitted to data, so leakage is structurally limited. The thresholds come from
+leave-one-protein-out on a calibration set disjoint from the targets; ground-truth labels are
+computed in a module the predictor cannot import, enforced by unit test; and sensitivity sweeps over
+every threshold are published. Code, environment specification, seeds and intermediate matrices are
+released so each figure regenerates from a clean checkout.
+
+% =====================================================================
+\section{Impact, Metrics of Success and Risks}
+
+\lead{Where the value sits.} The tool acts where a target is advanced or abandoned. Screening without
+knowing where on the surface to aim is the most expensive form of ignorance in early discovery, and
+shelved targets carry zero option value. A static structure becomes a ranked surface map in minutes
+instead of months, and being training-free the method applies immediately to targets with no
+allosteric precedent: the population supervised predictors serve worst.
+
+\lead{Metrics of success.} Discrimination against the published $0.87$~\cite{meller2023};
+interference gain over $e^{A}$ and $e^{-Lt}$ on the same graph; runtime per target; top-5 hit rate
+and distance to the true site; and generalisation on untouched ASD targets.
+
+\lead{Risks.} Time-averaging may suppress the interference peaks that motivate the walk, which is why
+a time-resolved score is benchmarked alongside $\Mhat$. Near-degenerate spectra make the idempotent
+grouping in~(2) numerically delicate, addressed by tolerance scanning. The conservation prior is the
+largest exposure to the ab-initio-from-topology requirement, hence the parallel topology-only run.
+The elastic-network assumption is weakest for c-Myc, which is nonetheless delivered as a required
+target with pocket annotation disabled. Finally, interference may add nothing, in which case the
+sweep returns $p^{*}=1$; that is a controlled negative result on a question the challenge itself
+raises, and the classical pipeline remains a working deliverable.
+
+% =====================================================================
+\footnotesize
+\setlength{\columnsep}{16pt}
+\begin{multicols}{2}
+\begin{thebibliography}{99}
+\setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}\linespread{0.95}\selectfont
+
+\bibitem{godsil2013} Godsil C. Average mixing of continuous quantum walks.
+  \textit{J. Comb. Theory Ser. A} \textbf{120}, 1649--1662 (2013). arXiv:1103.2578
+
+\bibitem{mohtashim2026} Mohtashim SI, Sajjan M, Kais S. Continuous-time quantum-walk centrality for
+  protein residue interaction networks. \textit{J. Am. Chem. Soc.} \textbf{148}, 29206--29219 (2026).
+  doi:10.1021/jacs.6c08053
+
+\bibitem{amor2016} Amor BRC, Schaub MT, Yaliraki SN, Barahona M. Prediction of allosteric sites and
+  mediating interactions through bond-to-bond propensities. \textit{Nat. Commun.} \textbf{7}, 12477
+  (2016). doi:10.1038/ncomms12477
+
+\bibitem{novo2015} Novo L, Chakraborty S, Mohseni M, Neven H, Omar Y. Systematic dimensionality
+  reduction for quantum walks. \textit{Sci. Rep.} \textbf{5}, 13304 (2015). doi:10.1038/srep13304
+
+\bibitem{whitfield2010} Whitfield JD, Rodr\'iguez-Rosario CA, Aspuru-Guzik A. Quantum stochastic
+  walks. \textit{Phys. Rev. A} \textbf{81}, 022323 (2010). doi:10.1103/PhysRevA.81.022323
+
+\bibitem{mohseni2008} Mohseni M, Rebentrost P, Lloyd S, Aspuru-Guzik A. Environment-assisted quantum
+  walks in photosynthetic energy transfer. \textit{J. Chem. Phys.} \textbf{129}, 174106 (2008).
+  doi:10.1063/1.3002335
+
+\bibitem{rebentrost2009} Rebentrost P, Mohseni M, Kassal I, Lloyd S, Aspuru-Guzik A.
+  Environment-assisted quantum transport. \textit{New J. Phys.} \textbf{11}, 033003 (2009).
+  doi:10.1088/1367-2630/11/3/033003
+
+\bibitem{estrada2008} Estrada E, Hatano N. Communicability in complex networks.
+  \textit{Phys. Rev. E} \textbf{77}, 036111 (2008). doi:10.1103/PhysRevE.77.036111
+
+\bibitem{lu2016} Lu D, Biamonte JD, Li J, et al. Chiral quantum walks. \textit{Phys. Rev. A}
+  \textbf{93}, 042302 (2016). doi:10.1103/PhysRevA.93.042302
+
+\bibitem{bahar1997} Bahar I, Atilgan AR, Erman B. Direct evaluation of thermal fluctuations in
+  proteins using a single-parameter harmonic potential. \textit{Folding \& Design} \textbf{2},
+  173--181 (1997). doi:10.1016/S1359-0278(97)00024-2
+
+\bibitem{atilgan2001} Atilgan AR, Durell SR, Jernigan RL, et al. Anisotropy of fluctuation dynamics
+  of proteins with an elastic network model. \textit{Biophys. J.} \textbf{80}, 505--515 (2001).
+  doi:10.1016/S0006-3495(01)76033-X
+
+\bibitem{chennubhotla2007} Chennubhotla C, Bahar I. Signal propagation in proteins and relation to
+  equilibrium fluctuations. \textit{PLoS Comput. Biol.} \textbf{3}, 1716--1726 (2007).
+  doi:10.1371/journal.pcbi.0030172
+
+\bibitem{meller2023} Meller A, Ward M, Borowsky J, et al. Predicting locations of cryptic pockets
+  from single protein structures using the PocketMiner graph neural network.
+  \textit{Nat. Commun.} \textbf{14}, 1177 (2023). doi:10.1038/s41467-023-36699-3
+
+\bibitem{asbench2015} Huang Z, et al. ASBench: benchmarking sets for allosteric discovery.
+  \textit{Bioinformatics} \textbf{31}, 2357--2359 (2015). doi:10.1093/bioinformatics/btv169
+
+\bibitem{ostrem2013} Ostrem JM, Peters U, Sos ML, Wells JA, Shokat KM. K-Ras(G12C) inhibitors
+  allosterically control GTP affinity and effector interactions. \textit{Nature} \textbf{503},
+  548--551 (2013). doi:10.1038/nature12796
+
+\bibitem{wylie2017} Wylie AA, Schoepfer J, Jahnke W, et al. The allosteric inhibitor ABL001 enables
+  dual targeting of BCR--ABL1. \textit{Nature} \textbf{543}, 733--737 (2017). doi:10.1038/nature21702
+
+\bibitem{anderson2018} Anderson RL, Trivedi DV, Sarkar SS, et al. Deciphering the super relaxed state
+  of human $\beta$-cardiac myosin and the mode of action of mavacamten. \textit{PNAS} \textbf{115},
+  E8143--E8152 (2018). doi:10.1073/pnas.1809540115
+
+\end{thebibliography}
+\end{multicols}
+
+\end{document}
