@@ -233,6 +233,39 @@ $\Mhat$ is computed by exact eigendecomposition at full resolution (single-parti
 dimensions, so this is polynomial and trivial for $N \approx 300$--$1000$); the Krylov route supplies
 the hardware track, and agreement between the two is a required consistency check.
 
+\subsection{Back-mapping the reduction to the $N\times N$ matrix}
+
+The reduction runs the walk in $K$ dimensions, whereas the deliverable is the $N\times N$ residue
+matrix; the Lanczos isometry $Q$, whose columns already live in residue space, connects them.
+Diagonalising the small tridiagonal projection $H_K = V\Theta V^{\dagger}$
+($\Theta = \operatorname{diag}(\theta_r)$, an $O(K^2)$ step) and lifting each Ritz vector to
+\begin{equation}
+|y_r\rangle = Q v_r \in \mathbb{C}^{N}, \qquad Y = QV \ (N\times K),
+\end{equation}
+yields $K$ approximate eigenpairs $(\theta_r, y_r)$ of $H$ that reproduce exactly the spectral content
+reachable from $|\psi_S\rangle$. The propagator restricted to the subspace is
+$\tilde U(t) = Q\,e^{-iH_K t}\,Q^{\dagger} = Y\,e^{-i\Theta t}\,Y^{\dagger}$; time-averaging
+$|\tilde U_{ji}(t)|^{2}$ collapses the cross terms at non-degenerate Ritz values, so the connectivity
+matrix is a Gram product of squared Ritz amplitudes,
+\begin{equation}
+\Mhat_{ij} = \sum_{r=1}^{K} |y_r(i)|^{2}\,|y_r(j)|^{2} = (W W^{\mathsf T})_{ij}, \qquad
+W_{ir} \equiv |y_r(i)|^{2},
+\end{equation}
+a single $N\times K$ matrix and one product, symmetric and positive semidefinite by construction.
+
+\lead{Why this is the natural decode.} As $K \to N$ the Ritz pairs become exact eigenpairs and
+$W W^{\mathsf T}$ becomes the exact average mixing matrix of Section~3.2, so the full-resolution
+deliverable and the hardware-track reconstruction are one estimator at two truncations, not two
+methods. Row sums equal the Krylov-projector diagonal,
+$\sum_j \Mhat_{ij} = \sum_r |y_r(i)|^{2} = (Q Q^{\dagger})_{ii} \le 1$, and the deficit
+$1 - \sum_j \Mhat_{ij}$ is the fraction of residue $i$'s dynamics lying outside the captured
+subspace: a per-residue coverage diagnostic reported alongside the coarse-graining fidelity of
+Section~5. The source column $\Mhat[\cdot, S]$ that the ranking consumes is reconstructed exactly,
+error appearing only for residue pairs spectrally distant from the active site; block or restarted
+Lanczos with a few probe sources tightens those off-source blocks through the same lift $Y = QV$. On
+hardware only the $K$-dimensional evolution is executed; $Q$ is a classical $N\times K$ matrix, so
+back-mapping is post-processing and adds nothing to the qubit budget.
+
 \subsection{Coherence sweep}
 
 Interference here is a modelling choice, not a claim about physiological coherence. Embedding $H$ in
@@ -342,7 +375,7 @@ time; it is dominated by queueing and classical pre/post-processing, not device 
 % =====================================================================
 \section{Implementation Plan}
 
-Phase~I delivers this specification; Phase~II builds and validates it. The circuit of Section~3.7 is
+Phase~I delivers this specification; Phase~II builds and validates it. The circuit of Section~3.8 is
 the defining construction; because its single-excitation sector is exactly solvable, the same $\Mhat$
 is computed classically at full resolution, serving as both deliverable and hardware reference, so no
 milestone depends on device availability.
@@ -360,7 +393,7 @@ milestone depends on device availability.
       $e^{A}$ and $e^{-Lt}$.
 \item \lead{Validation.} Blind runs on the four targets, then extended generalisation runs, against
       all baselines in Section~5.
-\item \lead{Hardware.} Execute the circuits of Section~3.7 on Braket, verifying the quantum $\Mhat$
+\item \lead{Hardware.} Execute the circuits of Section~3.8 on Braket, verifying the quantum $\Mhat$
       against the classical one under post-selection and zero-noise extrapolation.
 \end{enumerate}
 
