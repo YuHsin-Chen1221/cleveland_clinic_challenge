@@ -1,0 +1,282 @@
+\documentclass[11pt,a4paper]{article}
+
+% ---------- packages ----------
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[utf8]{inputenc}
+\usepackage[a4paper,top=20mm,bottom=18mm,left=18mm,right=18mm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{textcomp}
+\usepackage{microtype}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{titlesec}
+\usepackage{tikz}
+\usetikzlibrary{positioning,shapes.geometric,calc}
+\usepackage[hidelinks]{hyperref}
+
+% ---------- colours ----------
+\definecolor{navy}{HTML}{0B1F3A}
+\definecolor{steel}{HTML}{21456E}
+\definecolor{boxblue}{HTML}{EEF2F8}
+\definecolor{brdblue}{HTML}{2F5C8F}
+\definecolor{boxgreen}{HTML}{E9F3EC}
+\definecolor{brdgreen}{HTML}{2E7D4F}
+\definecolor{boxamber}{HTML}{FBF3E6}
+\definecolor{brdamber}{HTML}{B07D2F}
+\definecolor{boxpurp}{HTML}{F3ECFB}
+\definecolor{brdpurp}{HTML}{7A4FB0}
+\definecolor{grey}{HTML}{555555}
+
+% ---------- section styling ----------
+\titleformat{\section}{\normalfont\large\bfseries\color{navy}}{\thesection.}{0.5em}{}
+\titleformat{\subsection}{\normalfont\normalsize\bfseries\color{steel}}{\thesubsection}{0.5em}{}
+\titlespacing*{\section}{0pt}{12pt}{4pt}
+\titlespacing*{\subsection}{0pt}{8pt}{2pt}
+\setlist[itemize]{leftmargin=1.4em,itemsep=1pt,topsep=2pt}
+\renewcommand{\arraystretch}{1.15}
+
+% ---------- macros ----------
+\newcommand{\mhat}{\hat{M}}
+\newcommand{\lead}[1]{\textbf{#1}}
+\newcommand{\note}[1]{{\color{grey}\small #1}}
+\newcommand{\code}[1]{{\ttfamily\def\_{\char`\_\allowbreak}#1}}
+\newcommand{\Ang}{\text{\AA}}
+\newcommand{\cnum}[1]{\raisebox{0.4pt}{\textcircled{\kern-0.4pt\scriptsize #1\kern-0.4pt}}}
+\newcommand{\ding}{\cnum{1}}
+\newcommand{\dingtwo}{\cnum{2}}
+\newcommand{\dingthree}{\cnum{3}}
+\newcommand{\dingfour}{\cnum{4}}
+\newcommand{\dingfive}{\cnum{5}}
+\newcommand{\dingsix}{\cnum{6}}
+\newcommand{\dingseven}{\cnum{7}}
+
+\hypersetup{pdftitle={A Training-Free Quantum-Walk Scanner for Cryptic Allosteric Sites},
+            pdfauthor={Global Quantum + AI Challenge 2026}}
+
+\begin{document}
+\pagestyle{empty}
+
+% ================= TITLE =================
+{\LARGE\bfseries\color{black} A Training-Free Quantum-Walk Scanner for Cryptic Allosteric Sites in Undruggable Proteins\par}
+\vspace{3pt}
+{\color{grey} Global Quantum + AI Challenge 2026 --- Cleveland Clinic Enterprise Challenge \textperiodcentered\ Phase~I Concept Proposal\par}
+\vspace{6pt}
+\hrule height 1pt
+\vspace{8pt}
+
+% ================= 1. EXEC SUMMARY =================
+\section{Executive Summary}
+More than 85\% of disease-driving proteins are considered \emph{undruggable}: the only viable therapeutic strategy is allosteric modulation---finding a hidden regulatory pocket on a distal surface. We propose a \lead{training-free Continuous-Time Quantum Walk (CTQW) scanner}. The contact topology and evolutionary conservation of an apo protein are encoded into a sparse Hermitian Hamiltonian; we compute its \lead{average mixing matrix} as the inter-residue quantum connectivity matrix, and rank distal cryptic pockets by their \lead{dynamical connectivity to the active site}. The core quantity is a \lead{deterministic spectral property} of the Hamiltonian---\lead{no supervised training}---so there is no small-$n$ or generalization problem, and the three target proteins serve as pure blind validation.
+
+\smallskip
+\lead{Quantum positioning and feasibility.} Predictions are produced in a \emph{quantum-inspired} manner (classically exact simulation of the CTQW); the quantum-hardware track demonstrates a credible path via a gate-based CTQW circuit on coarse-grained super-nodes ($K$ nodes, AWS Braket / IBM) together with noise resilience (QSW dephasing sweep). This satisfies the challenge's requirement that gate-based, quantum-inspired, or hybrid approaches are all acceptable provided a near-term hardware execution path exists. The quantum character comes from \lead{coherent interference} ($e^{-iHt}$), which we substantiate through its discriminative gain over classical diffusion $e^{A}$.
+
+% ================= 2. METHOD OVERVIEW =================
+\section{Method Overview}
+\begin{center}
+\begin{tikzpicture}[
+  font=\footnotesize,
+  box/.style={rectangle,rounded corners=3pt,draw=brdblue,fill=boxblue,
+              text width=6.2cm,align=center,inner sep=4pt,minimum height=8mm},
+  gbox/.style={box,draw=brdgreen,fill=boxgreen},
+  abox/.style={box,draw=brdamber,fill=boxamber},
+  hbox/.style={rectangle,rounded corners=3pt,draw=brdpurp,fill=boxpurp,dashed,
+               text width=5.4cm,align=center,inner sep=4pt},
+  fl/.style={-{},draw=grey,line width=0.9pt,shorten >=1pt,shorten <=1pt},
+  arw/.style={->,draw=grey,line width=0.9pt},
+  parw/.style={->,draw=brdpurp,line width=0.9pt,dashed},
+  node distance=4mm and 8mm]
+
+\node[box] (n1) {\lead{\ding} Apo crystal structure (input $X$)\\[1pt]\note{RCSB PDB \textperiodcentered\ apo only \textperiodcentered\ annotated active site $S$}};
+\node[box,below=of n1] (n2) {\lead{\dingtwo} Feature extraction\\[1pt]\note{heavy-atom contacts $A_{\text{mech}}$ \textperiodcentered\ ESM-2 conservation \textperiodcentered\ geometry $\rightarrow$ phase}};
+\node[box,below=of n2] (n3) {\lead{\dingthree} Sparse Hermitian Hamiltonian $H$\\[1pt]\note{off-diag = contact hopping \textperiodcentered\ diag = conservation \textperiodcentered\ (chiral phase)}};
+\node[box,below=of n3] (n4) {\lead{\dingfour} Krylov coarse-graining $\rightarrow$ fixed $K$\\[1pt]\note{active-site anchored \textperiodcentered\ length-independent dim \textperiodcentered\ $\log_2 K$ qubits}};
+\node[gbox,below=of n4] (n5) {\lead{\dingfive} CTQW: average mixing matrix $\mhat$\\[1pt]\note{$\mhat=\sum_r E_r\!\circ\!E_r$ \textperiodcentered\ no $t$ \textperiodcentered\ deterministic \textperiodcentered\ = connectivity matrix}};
+\node[box,below=of n5] (n6) {\lead{\dingsix} Connectivity scoring + select $j$\\[1pt]\note{$z(j)$ ranking \textperiodcentered\ distal + surface filter \textperiodcentered\ optional pocket cluster}};
+\node[abox,below=of n6] (n7) {\lead{\dingseven} Deliverables: $N\times N$ connectivity matrix + Top-5\\[1pt]\note{apo$\rightarrow$holo blind validation}};
+
+\foreach \a/\b in {n1/n2,n2/n3,n3/n4,n4/n5,n5/n6,n6/n7}{\draw[arw] (\a) -- (\b);}
+
+\node[hbox,right=14mm of n5] (hw) {\lead{Quantum hardware track (credible path)}\\[1pt]\note{gate CTQW circuit (Braket / IBM), $\log_2 K$ qubits}\\[1pt]\note{qDRIFT / sparse-Trotter \textperiodcentered\ QSW dephasing sweep $\rightarrow$ noise resilience}\\[1pt]\note{verify quantum $\mhat \approx$ classical $\mhat$}};
+\draw[parw] (n5) -- (hw);
+
+\node[rotate=90,color=brdgreen,font=\scriptsize] at ([xshift=-5mm]$(n1.west)!0.5!(n7.west)$) {Classical exact --- generates predictions};
+\end{tikzpicture}
+\end{center}
+\vspace{-4pt}
+\note{\textbf{Figure 1.} End-to-end pipeline. The main spine (green/blue) is the quantum-inspired, classically exact prediction path; the dashed box on the right is the quantum-hardware demonstration track. Steps \dingfour+\dingfive\ decouple the dimension and qubit count from protein length.}
+
+% ================= 3. METHODOLOGY =================
+\section{Methodology}
+
+\subsection{Graph Construction and Hamiltonian Encoding}
+The protein is represented as a \lead{residue-level} graph (nodes = residues, mapping directly onto the deliverable residue indices while suppressing qubit demand). The Hamiltonian $H$ is sparse and Hermitian:
+\begin{equation*}
+H_{ij}=w_{ij}\,e^{i\varphi_{ij}}\quad(i\neq j);\qquad H_{ii}=c_i .
+\end{equation*}
+\begin{itemize}
+\item \lead{Off-diagonal (hopping) $w_{ij}$:} residue contact topology, taken from the GNM contact network---\lead{nodes = residues (represented by C$\alpha$)}, \lead{edges = C$\alpha$--C$\alpha$ distance $<$ cutoff ($7.3\,\Ang$)}; its Kirchhoff matrix is $\Gamma = D - A$ ($A$ = contact adjacency, $D$ = degree diagonal, $A_{ij}=1$ if in contact). $w_{ij}$ takes the contacts of $A$ (or a finer heavy-atom contact count at $4.5\,\Ang$). Naturally sparse (degree $\sim$6--10), which caps circuit cost. \note{Note: only the GNM contact graph is borrowed as the CTQW topology; no GNM mode decomposition is performed.}
+\item \lead{Diagonal (on-site energy) $c_i$:} per-residue evolutionary conservation (ESM-2 / MSA). This injects a functional prior through a sparse diagonal, \lead{without densifying $H$ and without breaking Hermiticity}---the key differentiator from purely topological prior work.
+\item \lead{Chiral phase $\varphi_{ij}$ (optional):} given by the projection of the ANM lowest-frequency mode along edge $(i,j)$, breaking time-reversal symmetry to yield an \lead{asymmetric, directional} connectivity matrix.
+\end{itemize}
+\note{$A_{\text{dist}}$ (pure geometric distance) is removed as highly redundant with $A_{\text{mech}}$; its geometric content is reused as the chiral-phase source. Each channel is z-score normalized; any asymmetric input is symmetrized as $(A+A^{\mathsf T})/2$. States use amplitude/log encoding ($K$ nodes $\rightarrow \lceil\log_2 K\rceil$ qubits).}
+
+\subsection{Hamiltonian Validity and Hermiticity}
+\lead{Challenge compliance.} $H$ is constructed \emph{ab initio} entirely from the apo crystal structure and sequence---contact topology from apo coordinates, diagonal conservation from sequence/ESM-2, and the optional phase from the eigenvectors of the analytic ANM Hessian. \lead{None of these is a molecular-dynamics trajectory} (ANM is the analytic eigenproblem of an elastic network, not MD sampling), satisfying the challenge rules that classical MD may not be used and that the method must proceed from topology under the elastic-network hypothesis.
+
+\smallskip
+\lead{Hermiticity (necessary and sufficient for a valid CTQW).} A valid quantum walk requires $H=H^{\dagger}$, which guarantees that $U(t)=e^{-iHt}$ is unitary, the eigenvalues are real, and probability is conserved. A channel-by-channel check proves the fused $H$ remains Hermitian:
+\begin{itemize}
+\item \lead{Diagonal (conservation):} $c_i\in\mathbb{R}\Rightarrow$ real diagonal, so $H_{ii}=\overline{H_{ii}}$ automatically.
+\item \lead{Off-diagonal magnitude:} contacts are symmetric $w_{ij}=w_{ji}$ (enforced post-construction via $(A+A^{\mathsf T})/2$); z-score normalization preserves realness and symmetry.
+\item \lead{Chiral phase:} taking the phase \lead{antisymmetric}, $\varphi_{ji}=-\varphi_{ij}$, gives $H_{ji}=w_{ij}e^{-i\varphi_{ij}}=\overline{H_{ij}}$ identically.
+\end{itemize}
+\begin{equation*}
+\Rightarrow\quad H=H^{\dagger}:\qquad H_{ij}=w_{ij}e^{i\varphi_{ij}},\quad H_{ji}=w_{ij}e^{-i\varphi_{ij}}=\overline{H_{ij}},\quad H_{ii}=c_i\in\mathbb{R}.
+\end{equation*}
+\note{Key distinction: once the chiral phase is added, $H$ is \textbf{complex Hermitian but not symmetric}---still a valid CTQW, yet it yields a \textbf{directional} connectivity $\mhat[i\!\to\!j]\neq\mhat[j\!\to\!i]$ that symmetric classical GNM/communicability cannot express. With $\varphi\equiv 0$ it reduces to the standard CTQW of a real symmetric $H$. Only the phase accumulated around \textbf{cycles} (magnetic flux) is physical, so a gauge fixing first removes trivial phases absorbable by a diagonal unitary, retaining only the directional signal. The fusion routine \code{assemble\_hamiltonian} ends with the assertion $\lVert H-H^{\dagger}\rVert_F < 10^{-10}$ as a pre-flight check.}
+
+\subsection{Active-Site-Anchored Krylov Coarse-Graining (Fixed-Dimension Reduction)}
+Goal: decouple the dimension and qubit count from protein length while exactly preserving transport ``sourced at the active site.'' Key insight: ranking needs only the \lead{source$\rightarrow$all} transport vector $\langle j|e^{-iHt}|\psi_S\rangle$, and this dynamics is spanned exactly by the Krylov subspace generated from $|\psi_S\rangle$. Define the source state $|\psi_S\rangle=\sum_{i\in S}a_i|i\rangle$ (normalized); the order-$K$ Krylov subspace is
+\begin{equation*}
+\mathcal{K}_K(H,\psi_S)=\operatorname{span}\{\,|\psi_S\rangle,\,H|\psi_S\rangle,\,H^2|\psi_S\rangle,\,\ldots,\,H^{K-1}|\psi_S\rangle\,\}.
+\end{equation*}
+The Lanczos iteration orthonormalizes it into a basis $Q=[q_1\cdots q_K]$ ($q_1=|\psi_S\rangle$, $N\times K$), projecting $H$ onto a \lead{tridiagonal} $H_K=Q^{\dagger}HQ$ (diagonal $\alpha_r$, off-diagonal $\beta_r$):
+\begin{equation*}
+\beta_r|q_{r+1}\rangle = H|q_r\rangle-\alpha_r|q_r\rangle-\beta_{r-1}|q_{r-1}\rangle,\qquad \alpha_r=\langle q_r|H|q_r\rangle .
+\end{equation*}
+Because $Q^{\dagger}|\psi_S\rangle=e_1$, the transport from the source to any residue is \lead{exactly preserved} within $K$ dimensions:
+\begin{equation*}
+\langle j|e^{-iHt}|\psi_S\rangle = [Q]_{j,:}\;e^{-iH_K t}\;e_1 .
+\end{equation*}
+\lead{Steps:} (1) build the sparse $H$; (2) form $|\psi_S\rangle$ from the annotated $S$; (3) run $K$ Lanczos steps to obtain $H_K,Q$ ($K=32$--$64$; hardware demo $K=8$--$16 \rightarrow 3$--$4$ qubits); (4) tridiagonal $H_K\rightarrow$ shallow Trotter circuit $e^{-iH_K t}$; (5) after readout, project back to residues via $Q$. \note{The delivered $N\times N$ $\mhat$ uses the classically exact eigendecomposition (single-particle CTQW lives in $N$ dimensions, poly-time); ranking uses the fixed-$K$ Krylov path, which is the part run on hardware. This preserves ``source transport,'' unlike generic spectral clustering (which retains only generic modes).}
+
+\subsection{CTQW and Readout: the Average Mixing Matrix}
+The propagator of the continuous-time quantum walk is $U(t)=e^{-iHt}$. Its long-time average mixing matrix is a deterministic spectral object:
+\begin{equation*}
+\mhat_{ij}=\lim_{T\to\infty}\frac{1}{T}\int_0^{T}\big|\langle j|e^{-iHt}|i\rangle\big|^2\,dt=\Big(\textstyle\sum_r E_r\!\circ\!E_r\Big)_{ij},
+\end{equation*}
+where $E_r$ are the eigenprojectors of $H$. $\mhat$ is symmetric, doubly stochastic, and has \lead{no free time parameter and needs no training}---it \emph{is} the delivered $N\times N$ quantum connectivity matrix. The score of residue $j$ with respect to the active site is
+\begin{equation*}
+\operatorname{score}(j)=\sum_{i\in S} w_i\,\mhat_{ij}.
+\end{equation*}
+\note{Quantum character: $\mhat$ is determined by coherent interference and is mathematically distinct from classical diffusion $e^{A}$ (Estrada communicability); we substantiate the interference gain through the discriminative delta of $e^{-iAt}$ vs $e^{A}$.}
+
+\subsection{Ranking Metric and Hit-list Selection}
+Since $\mhat$ is doubly stochastic, raw connectivity is confounded by centrality (hub residues score high by construction). The ranking metric must be normalized so that it reflects \lead{specific} connectivity to the active site above background---exactly the quantity tested by the challenge's primary objective, extractable directly from $\mhat$:
+\begin{align*}
+&\text{\ding\ raw connectivity:} &s(j)&=\sum_{i\in S} w_i\,\mhat_{ij}\\
+&\text{\dingtwo\ specificity (deconfounds degree):} &\rho(j)&=s(j)\Big/\textstyle\sum_k \mhat_{kj}\\
+&\text{\dingthree\ $\bigstar$ primary metric (background-standardized):} &z(j)&=\big(\rho(j)-\mu_{\text{bg}}\big)/\sigma_{\text{bg}}
+\end{align*}
+\note{$\mu_{\text{bg}},\sigma_{\text{bg}}$ are taken from background residues (non-active, non-neighbor surface residues + non-functional pockets). $z(j)$ is precisely the score used by the statistical test (allosteric vs.\ background): the ranking metric is isomorphic to the scoring criterion, avoiding the degenerate ``rank the hubs'' solution.}
+
+\smallskip
+\lead{Filtering.} Exclude $S$ and its first-shell neighbors; require \lead{distal} residues (C$\alpha$--C$\alpha$ distance to $S$ $>12\,\Ang$). \lead{Top-5 (primary ranking, residue level): purely by the primary metric $z(j)$} --- \lead{no pocketness is applied and druggability is not a hard gate}. After filtering, take the 5 residues with the highest $z(j)$ (spatially adjacent ones first merged into a single hit), which are the delivered Top-5.
+
+\note{\lead{Supplementary note (druggability; soft, not a filter).} For pocket-bearing targets such as KRAS/\allowbreak ABL/\allowbreak myosin, high-$z(j)$ residues may be spatially clustered into candidate pockets $P$ and \emph{annotated} with pocketness as a druggability tag: $\operatorname{Score}(P)=(\text{mean or 90th-pct})_{j\in P}\,z(j)\times\operatorname{pocketness}(P)$. This is only a post-ranking druggability annotation and \textbf{does not change the primary Top-5}: cryptic allosteric pockets are typically closed in the apo state and missed by fpocket, so a hard pocketness gate would defeat the very purpose of ``finding hidden pockets.'' c-Myc (an IDP with no static pocket) explicitly disables pocketness and is \textbf{connectivity-only}.}
+
+\note{Optional quantum-increment metric (for the method report, not the primary ranking): $\Delta(j)=\mhat_{\text{CTQW}}[S,j]-C_{e^{A}}[S,j]$ isolates the interference contribution; with a chiral $H$ we instead use the directed $\mhat[i\!\to\!j]$ to represent ``signal flowing out of the active site.''}
+
+\subsection{Dual-Track Execution: Classical-Exact + Quantum Hardware}
+\lead{Prediction track (quantum-inspired):} full-resolution eigendecomposition of the sparse $H$ ($O(N^3)$, trivial for $N\sim 300$--$1000$) computes $\mhat$ exactly, producing a deterministic, residue-level connectivity matrix and hit list. \lead{Hardware track (credible path):} coarse-grain to $K=8$--$16$, and with amplitude encoding realize $e^{-iHt}$ on AWS Braket / IBM via qDRIFT or sparse-Trotter, verifying that the quantum $\mhat$ matches the classical one; a QSW (Lindblad) sweep over the dephasing $p$ probes noise ($p\to 1$ = classical baseline, the ENAQT optimum = noise resilience).
+
+\subsection{Method Functions}
+\begin{center}
+\scriptsize
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{2.9cm} >{\raggedright\arraybackslash}p{2.5cm} X >{\raggedright\arraybackslash}p{2.7cm}@{}}
+\toprule
+\textbf{Function} & \textbf{Input $\rightarrow$ Output} & \textbf{Description} & \textbf{Packages}\\
+\midrule
+\code{build\_residue\_graph} & \code{apo.pdb} $\rightarrow$ $(E,c)$ & parse apo; build heavy-atom contact edges $E$ ($w_{ij}$); compute per-residue conservation $c_i$ & BioPython, ProDy, fair-esm\\
+\code{assemble\_hamiltonian} & $(E,c,\Phi)\rightarrow H$ & $H_{ij}=w_{ij}e^{i\varphi}$, $H_{ii}=c_i$; symmetrize, z-score; sparse Hermitian & NumPy/SciPy\\
+\code{coarse\_grain} & $(H,S,K)\rightarrow(H_K,Q)$ & active-site-anchored Krylov/Lanczos reduction to fixed $K$; preserves transport dynamics & SciPy\\
+\code{average\_mixing\_matrix} & $H\rightarrow\mhat$ & eigendecomposition $\rightarrow \mhat=\sum_r E_r\!\circ\!E_r$; deterministic, no training; = connectivity matrix & NumPy\\
+\code{connectivity\_score} & $(\mhat,S,w)\rightarrow s(j)$ & dynamical connectivity of residue $j$ to the active-site set $S$ & NumPy\\
+\code{select\_hits} & $(z,\text{coords},S)\rightarrow$ Top-5 & exclude $S$+neighbors; distal filter; rank by $z(j)$; (optional) cluster + annotate pocketness & fpocket, SciPy, NetworkX\\
+\code{ctqw\_circuit} \note{(HW)} & $H_K\rightarrow\hat U(t)$ & $\lceil\log_2 K\rceil$-qubit gate CTQW; estimate $\mhat$; Braket/IBM & Qiskit, Braket SDK, Classiq\\
+\code{qsw\_dephasing} \note{(HW/noise)} & $(H_K,p)\rightarrow\eta(p)$ & Lindblad QSW; sweep $p$; $p\to 1$ classical, ENAQT optimum = resilience & QuTiP\\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+% ================= 4. DATA =================
+\section{Data}
+\lead{No training set.} The method is training-free, so there is no small-$n$ or generalization problem.
+\begin{itemize}
+\item \lead{Calibration set (optional, only 2--4 hyperparameters):} dozens of proteins from ASD / ASBench (apo/holo + annotated allosteric sites), used under a leave-one-protein-out scheme to set the distal threshold, diagonal weight, and phase amplitude; \lead{excludes the three target proteins}.
+\item \lead{Validation set (primary):} KRAS G12C (4OBE$\rightarrow$6OIM), BCR-ABL1 (1OPL$\rightarrow$5MO4), cardiac myosin (5TBY$\rightarrow$6C1H), with apo input and holo-defined ground truth; c-Myc (1NKP) as an IDP stretch target (anchored on its functional interface instead).
+\item \lead{Extended validation (bonus):} additional ASD apo--holo pairs (disjoint from the calibration set) to demonstrate generalizability.
+\end{itemize}
+
+% ================= 5. VALIDATION =================
+\section{Validation}
+\begin{itemize}
+\item \lead{Primary metric (unsupervised discrimination, matching the challenge primary objective):} per target, Mann--Whitney / permutation $p$-value, ROC-AUC, Top-5 hit rate, and enrichment of allosteric-residue scores vs.\ background (random residues + non-functional surface pockets).
+\item \lead{Baselines:} classical communicability $e^{A}$ (Estrada), pure GNM centrality, and random---to demonstrate the delta of the $e^{-iHt}$ interference.
+\item \lead{Noise resilience:} QSW dephasing sweep + ZNE on the hardware demo.
+\item \lead{Scalability:} retention of the $\mhat$ topological signal before vs.\ after coarse-graining.
+\end{itemize}
+
+% ================= 6. IMPLEMENTATION =================
+\section{Implementation}
+\begin{center}
+\footnotesize
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{3.4cm} X@{}}
+\toprule
+\textbf{Stage} & \textbf{Packages}\\
+\midrule
+Structure / features & BioPython, ProDy (GNM/ANM), fair-esm / HuggingFace (ESM-2), fpocket (surface pockets), NumPy, SciPy\\
+Quantum simulation (prediction) & NumPy/SciPy eigendecomposition ($\mhat$), PennyLane (differentiable verification), QuTiP (QSW/Lindblad)\\
+Quantum circuits / hardware & Qiskit + qiskit-ibm-runtime, AWS Braket SDK, Classiq (synthesis + depth optimization), Mitiq (ZNE)\\
+Visualization & PyMOL (3D connectivity map), NetworkX, Matplotlib\\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+% ================= 7. FEASIBILITY & NOVELTY =================
+\section{Feasibility and Novelty}
+\lead{Feasibility.} The classically exact $\mhat$ is trivial; the small-$K$ hardware demo has precedent (Mohtashim 2026 ran a CTQW on protein RINs on IBM hardware); the entire toolchain is open source. \lead{Novelty (relative to purely topological prior work):} (1) evolutionary conservation placed as \lead{diagonal on-site energy}; (2) ANM direction $\rightarrow$ a \lead{directional connectivity matrix via chiral phases}; (3) \lead{active-site-anchored Krylov coarse-graining}; (4) the average mixing matrix as a training-free deliverable; (5) \lead{apo$\rightarrow$holo blind testing} on undruggable targets. Each rests on genuine literature; the combination is new.
+
+% ================= 8. DELIVERABLES =================
+\section{Deliverables}
+\begin{itemize}
+\item \lead{Quantum connectivity matrix:} the $N\times N$ average mixing matrix $\mhat$.
+\item \lead{Top-5 allosteric residue list:} ranked purely by the background-standardized specific connectivity $z(j)$ (residue level, no pocketness); pocketness serves only as a supplementary druggability annotation (see \S3.5).
+\item \lead{Methodology report:} the three-layer quantum positioning (coherent-interference model / hardware credible path / future multi-particle advantage) + evidence of the $e^{-iHt}$ vs.\ $e^{A}$ discriminative power.
+\item \lead{Robustness \& visualization:} QSW noise resilience, coarse-graining scalability, and 3D connectivity maps.
+\end{itemize}
+
+% ================= 9. REFERENCES =================
+\section{References}
+{\footnotesize
+\begin{enumerate}[leftmargin=1.6em,itemsep=1pt]
+\item Mohtashim, S.~I., Sajjan, M., \& Kais, S. (2026). Continuous-Time Quantum-Walk Centrality for Protein Residue Interaction Networks. \emph{J.\ Am.\ Chem.\ Soc.}, 148(27), 29206--29219. \note{(prior art/baseline: CTQW on protein RINs, IBM hardware)}
+\item Godsil, C. (2013). Average mixing of continuous quantum walks. \emph{J.\ Comb.\ Theory Ser.\ A}, 120(7), 1649--1662. \note{(core readout: average mixing matrix = connectivity deliverable)}
+\item Novo, L., Chakraborty, S., Mohseni, M., Neven, H., \& Omar, Y. (2015). Systematic Dimensionality Reduction for Quantum Walks. \emph{Sci.\ Rep.}, 5, 13304. \note{(Krylov coarse-graining: transport-preserving fixed-dimension reduction)}
+\item Wang, Y., Xue, S., Wu, J., \& Xu, P. (2022). Continuous-time quantum walk based centrality testing on weighted graphs. \emph{Sci.\ Rep.}, 12, 6001. \note{(weighted-graph CTQW centrality)}
+\item Childs, A.~M., \& Goldstone, J. (2004). Spatial search by quantum walk. \emph{Phys.\ Rev.\ A}, 70, 022314. \note{(marked-vertex anchoring; $\gamma_c$ from the spectrum)}
+\item Lu, D., Biamonte, J.~D., Li, J., et al. (2016). Chiral quantum walks. \emph{Phys.\ Rev.\ A}, 93, 042302. \note{(directionality: complex edge phases break time reversal)}
+\item Whitfield, J.~D., Rodr\'iguez-Rosario, C.~A., \& Aspuru-Guzik, A. (2010). Quantum stochastic walks. \emph{Phys.\ Rev.\ A}, 81, 022323. \note{(QSW: coherent$\leftrightarrow$classical Lindblad interpolation, noise)}
+\item Mohseni, M., Rebentrost, P., Lloyd, S., \& Aspuru-Guzik, A. (2008). Environment-assisted quantum walks in photosynthetic energy transfer. \emph{J.\ Chem.\ Phys.}, 129, 174106. \note{(ENAQT: noise-assisted transport)}
+\item Caruso, F., Chin, A.~W., Datta, A., Huelga, S.~F., \& Plenio, M.~B. (2009). Highly efficient energy excitation transfer in light-harvesting complexes. \emph{J.\ Chem.\ Phys.}, 131, 105106. \note{(sink Lindblad + transfer-efficiency readout)}
+\item Campbell, E. (2019). A random compiler for fast Hamiltonian simulation. \emph{Phys.\ Rev.\ Lett.}, 123, 070503. \note{(qDRIFT: shallow-circuit simulation of dense $H$)}
+\item Chen, et al. (2024). Implementation of a Continuous-Time Quantum Walk on a Sparse Graph. \emph{Phys.\ Rev.\ A}, 110, 052215. \note{(sparse-graph CTQW circuit, star decomposition)}
+\item Oh, E.~K., Krogmeier, T.~J., Schlimgen, A.~W., \& Head-Marsden, K. (2024). Singular Value Decomposition Quantum Algorithm for Quantum Biology. \emph{ACS Phys.\ Chem.\ Au}, 4(4), 393--399. \note{(open-system biological dynamics on quantum hardware)}
+\item Chennubhotla, C., \& Bahar, I. (2007). Signal Propagation in Proteins and Relation to Equilibrium Fluctuations. \emph{PLoS Comput.\ Biol.}, 3(9), e172. \note{(core biophysics: topology-driven allosteric propagation)}
+\item Estrada, E., \& Hatano, N. (2008). Communicability in complex networks. \emph{Phys.\ Rev.\ E}, 77, 036111. \note{(classical baseline $e^{A}$, the analog of quantum $e^{-iHt}$)}
+\item Bahar, I., Atilgan, A.~R., \& Erman, B. (1997). Direct evaluation of thermal fluctuations \ldots single-parameter harmonic potential. \emph{Fold.\ Des.}, 2(3), 173--181. \note{(GNM / Kirchhoff $\Gamma$)}
+\item Atilgan, A.~R., Durell, S.~R., Jernigan, R.~L., et al. (2001). Anisotropy of Fluctuation Dynamics of Proteins with an Elastic Network Model. \emph{Biophys.\ J.}, 80(1), 505--515. \note{(ANM; source of chiral-phase direction)}
+\item Wang, J., Jain, A., McDonald, L.~R., et al. (2020). Mapping allosteric communications within individual proteins. \emph{Nat.\ Commun.}, 11, 3862. \note{(Ohm: purely structural allosteric communication network)}
+\item Lin, Z., Akin, H., Rao, R., et al. (2023). Evolutionary-scale prediction of atomic-level protein structure with a language model. \emph{Science}, 379(6637), 1123--1130. \note{(ESM-2: conservation/evolutionary features)}
+\item Liu, X., Lu, S., Song, K., et al. (2020). Unraveling allosteric landscapes of allosterome with ASD. \emph{Nucleic Acids Res.}, 48(D1), D394--D401. \note{(ASD: calibration/extended-validation database)}
+\item Ostrem, J.~M., Peters, U., Sos, M.~L., Wells, J.~A., \& Shokat, K.~M. (2013). K-Ras(G12C) inhibitors allosterically control GTP affinity and effector interactions. \emph{Nature}, 503, 548--551. \note{(KRAS switch-II ground truth)}
+\item Wylie, A.~A., Schoepfer, J., Jahnke, W., et al. (2017). The allosteric inhibitor ABL001 enables dual targeting of BCR--ABL1. \emph{Nature}, 543, 733--737. \note{(BCR-ABL1 myristoyl ground truth)}
+\item Anderson, R.~L., Trivedi, D.~V., Sarkar, S.~S., et al. (2018). Deciphering the super relaxed state of human $\beta$-cardiac myosin and the mode of action of mavacamten. \emph{PNAS}, 115(35), E8143--E8152. \note{(myosin mavacamten ground truth)}
+\end{enumerate}}
+
+\end{document}

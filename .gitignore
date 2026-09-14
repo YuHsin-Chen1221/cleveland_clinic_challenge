@@ -1,0 +1,17 @@
+# Track ONLY the LaTeX proposal — ignore everything else in this folder
+*
+
+# Keep the LaTeX source, its compiled PDF, and repo meta
+!Quantum_Approach_to_Undruggable_Targets_Proposal.tex
+!Quantum_Approach_to_Undruggable_Targets_Proposal.pdf
+!README.md
+!.gitignore
+
+# LaTeX build artifacts (in case a build runs in-tree)
+*.aux
+*.log
+*.out
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.toc
