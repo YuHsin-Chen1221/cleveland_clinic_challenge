@@ -1,35 +1,63 @@
-# Cleveland Clinic Challenge — Quantum Proposal
+# Cleveland Clinic Challenge — Quantum Allosteric-Site Scanner
 
-Phase I concept proposal for the **Global Quantum + AI Challenge 2026 (Cleveland Clinic Enterprise Challenge)**:
+Phase I of the **Global Quantum + AI Challenge 2026 (Cleveland Clinic Enterprise Challenge)**:
 *A Training-Free Quantum-Walk Scanner for Cryptic Allosteric Sites in Undruggable Proteins.*
 
-## Layout
+A continuous-time quantum walk on a sparse **Hermitian** residue Hamiltonian (contact topology +
+ESM-2 conservation diagonal + ANM chiral phase); its average mixing matrix is the deliverable
+N×N connectivity matrix, ranked for allosteric residues by connectivity to the active site.
+
+## Repository structure
 
 ```
-docs/     LaTeX proposals (tracked on GitHub)
-scripts/  encoding / analysis code (local)
-data/     validation metadata (local)
+docs/                         proposals + labeling rules (tracked)
+  QSW_Allosteric_Proposal.{tex,pdf}                 canonical proposal
+  Quantum_Approach_to_Undruggable_Targets_Proposal.{tex,pdf}   earlier version
+  rules.md                    ground-truth labeling spec (X / Y / S rules + preconditions)
+
+data/                         datasets (only the two final CSVs are tracked)
+  validation_data.csv         the 4 challenge targets (KRAS, BCR-ABL1, myosin, c-Myc)
+  training/allosteric_training.csv   integrated ASD + AlloBench set (1,333 entries)
+  asd/, allobench/            raw source dumps (local only)
+
+results/                      outputs (only encodings/ is tracked; pdb_cache/ is local)
+  encodings/<target>/         3-feature Hermitian H per target: H,W,c,Phi (.npy) + nodes.csv + summary.json
+
+scripts/                      pipeline code (local only)
+  encoding.py                 build the 3-feature Hermitian H (contacts + ESM-2 + ANM phase)
+  ground_truth.py             the labeling rules as functions (4 A scan, UniProt active site, mapping)
+  config.py                   load validation targets from data/validation_data.csv
+  run_encoding.py             encode the compliant targets -> results/encodings/
+  build_training_set.py       integrate + dedup + filter ASD/AlloBench -> training CSV
+  build_validation_csv.py     apply the functions to the challenge targets -> validation CSV
+  validate_asd_rule.py        validate the 4 A rule against ASD's curated lists
 ```
 
-## Proposals (`docs/`)
+## Datasets — shared schema
 
-- **`QSW_Allosteric_Proposal.tex`** — **current / canonical version** (unary 1D-chain CTQW,
-  coherence-budget analysis, Ritz back-mapping §3.5).
-- `Quantum_Approach_to_Undruggable_Targets_Proposal.tex` — earlier version (amplitude-encoding
-  formulation); kept for reference.
+`data/validation_data.csv` and `data/training/allosteric_training.csv` use the **same columns**
+(same rule, same formatting):
+
+| column | meaning |
+|---|---|
+| `entry_id, sources, uniprot, pdb, chain` | identity (validation `sources` = `challenge_table`) |
+| `modulator_alias, modulator_class, modulator_name` | the bound allosteric modulator |
+| `allosteric_residues` (**Y**) | `A:12;A:59;…` in `pdb` author numbering — **4 Å heavy-atom scan** of the modulator |
+| `active_residues_uniprot` (**S**) | `13;94;…` in **UniProt** numbering — UniProt Active+Binding (−allosteric) |
+| `n_allosteric, n_active, has_active, sequence` | counts + input sequence |
+
+## Labeling rule (see `docs/rules.md`)
+
+- **Y (allosteric)** = protein residues with a heavy atom ≤ **4.0 Å** of the specified allosteric
+  modulator (all chains). Validated to reproduce ASD's curated lists (median Jaccard 1.0); 4 Å is the
+  AlloBench convention (not a self-defined 5 Å).
+- **S (active)** = UniProt `Active site` ∪ `Binding site` (minus allosteric) ∪ M-CSA.
+- Encoding runs only on **rule-compliant** entries (non-empty S & Y, allosteric from the 4 Å scan) —
+  i.e. KRAS + ABL among the challenge targets (myosin has no drug resolved in 6C1H; c-Myc has no S).
 
 ## Build
 
 ```bash
-cd docs
-latexmk -pdf QSW_Allosteric_Proposal.tex
+cd docs && latexmk -pdf QSW_Allosteric_Proposal.tex   # proposal PDF
 ```
-
-Plain `pdflatex` also works (run twice for references). Requires TeX Live with `quantikz`,
-`tikz`, `amsmath`, `amssymb`, `booktabs`, `tabularx`, `microtype`, `hyperref`.
-
-## Encoding (`scripts/`)
-
-Builds the sparse **Hermitian** residue Hamiltonian (3 channels: heavy-atom contacts +
-ESM-2 conservation diagonal + ANM chiral phase). See `scripts/encoding.py` and
-`scripts/run_encoding.py`.
+Requires TeX Live with `quantikz`, `tikz`, `amsmath`, `booktabs`, `tabularx`, `hyperref`.

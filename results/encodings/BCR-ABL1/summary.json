@@ -1,0 +1,62 @@
+{
+  "N": 451,
+  "edges": 2093,
+  "sparsity": 0.020625769894062576,
+  "mean_degree": 9.28159645232816,
+  "max_degree": 19,
+  "hermiticity_error": 0.0,
+  "is_complex_hermitian": true,
+  "diag_is_real": true,
+  "target": "BCR-ABL1",
+  "apo_pdb": "1OPL",
+  "chain": "A",
+  "uniprot": "P00519",
+  "resnum_range": [
+    81,
+    531
+  ],
+  "n_active_site_S_mapped": 17,
+  "active_site_S_apo": [
+    267,
+    268,
+    269,
+    270,
+    271,
+    272,
+    273,
+    274,
+    275,
+    290,
+    335,
+    336,
+    337,
+    338,
+    339,
+    340,
+    341
+  ],
+  "conservation_channel": {
+    "model": "esm2_t33_650M_UR50D",
+    "method": "wt_marginal",
+    "raw_min": -5.055356979370117,
+    "raw_max": -5.471556869451888e-05
+  },
+  "chiral_channel": {
+    "n_modes": 1,
+    "max_abs_phase_rad": 1.5707963267948966
+  },
+  "timings_sec": {
+    "parse": 0.06,
+    "contacts": 0.01,
+    "esm2_conservation": 4.02,
+    "anm_chiral_phase": 0.08,
+    "assemble": 0.0
+  },
+  "artifacts": [
+    "H.npy",
+    "W.npy",
+    "c.npy",
+    "Phi.npy",
+    "nodes.csv"
+  ]
+}

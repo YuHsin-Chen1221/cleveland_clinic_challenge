@@ -1,14 +1,32 @@
-# Track only the proposals in docs/ + repo meta; ignore everything else
-# (data/, scripts/, challenge statement, notes stay local)
+# Track: proposals + rules (docs/), the two final datasets, and encoding results.
+# Everything else stays local: scripts/, raw ASD/AlloBench dumps, PDB cache.
 *
+
 !.gitignore
 !README.md
+
+# docs/ — proposals (.tex/.pdf) + rules.md
 !docs/
 docs/*
 !docs/*.tex
 !docs/*.pdf
+!docs/*.md
 
-# LaTeX build artifacts (never track, even under docs/)
+# data/ — only the two final datasets (raw asd/, allobench/ stay local)
+!data/
+data/*
+!data/validation_data.csv
+!data/training/
+data/training/*
+!data/training/allosteric_training.csv
+
+# results/ — only the encoding artifacts (NOT the multi-MB PDB cache)
+!results/
+results/*
+!results/encodings/
+!results/encodings/**
+
+# LaTeX build artifacts
 *.aux
 *.log
 *.out
