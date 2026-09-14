@@ -166,6 +166,38 @@ where $E_r$ are the eigenprojectors of $H$. $\mhat$ is symmetric, doubly stochas
 \end{equation*}
 \note{Quantum character: $\mhat$ is determined by coherent interference and is mathematically distinct from classical diffusion $e^{A}$ (Estrada communicability); we substantiate the interference gain through the discriminative delta of $e^{-iAt}$ vs $e^{A}$.}
 
+\subsection{Back-Mapping the Krylov Reduction: Decoding the $N\times N$ Connectivity}
+The coarse-graining of \S3.3 runs the walk in a $K$-dimensional space, whereas the deliverable is the $N\times N$ residue matrix. Back-mapping lifts the $K$-space result to residue space through the Lanczos isometry $Q$, treating the \lead{Ritz pairs} of $H_K$ as approximate eigenpairs of $H$.
+
+\smallskip
+\lead{Step 1 --- Ritz pairs (lift to residue space).} Diagonalize the small tridiagonal $H_K=V\Theta V^{\dagger}$ ($\Theta=\operatorname{diag}(\theta_r)$; $O(K^2)$, trivial) and lift each Ritz coefficient vector $v_r$ to an $N$-dimensional Ritz vector
+\begin{equation*}
+|y_r\rangle = Q\,v_r\in\mathbb{C}^{N},\qquad Y=QV\ (N\times K).
+\end{equation*}
+The pairs $(\theta_r,y_r)$ approximate the eigenpairs of $H$, exactly reproducing the spectral content reachable from $|\psi_S\rangle$.
+
+\smallskip
+\lead{Step 2 --- Propagator lift.} Within the subspace the full propagator is represented by
+\begin{equation*}
+\tilde A(t)=Q\,e^{-iH_K t}\,Q^{\dagger}=Y\,e^{-i\Theta t}\,Y^{\dagger},\qquad
+\tilde A_{ji}(t)=\sum_{r=1}^{K} e^{-i\theta_r t}\,y_r(j)\,\overline{y_r(i)} ,
+\end{equation*}
+which is \lead{exact for the source column} ($i$ or $j\in S$) and a rank-$K$ approximation elsewhere.
+
+\smallskip
+\lead{Step 3 --- Average-mixing back-map (the decode).} Time-averaging $|\tilde A_{ji}(t)|^2$ collapses the cross terms (non-degenerate Ritz values), yielding the full $N\times N$ connectivity as a Gram product of the row-wise squared Ritz amplitudes:
+\begin{equation*}
+\boxed{\;\mhat_{ij}=\sum_{r=1}^{K}|y_r(i)|^2\,|y_r(j)|^2=(WW^{\mathsf T})_{ij},\qquad W_{ir}\equiv|y_r(i)|^2\;}
+\end{equation*}
+i.e.\ a single $N\times K$ matrix $W$ and one matrix product; $\mhat$ is symmetric and positive semidefinite by construction.
+\begin{itemize}
+\item \lead{$K\to N$ limit = exactness.} As $K\to N$ the Ritz pairs become the true eigenpairs and $WW^{\mathsf T}$ becomes the exact average mixing matrix of \S3.4. The classically exact prediction track \emph{is} this formula at $K=N$; the Krylov track is its source-anchored rank-$K$ approximation---a single unified estimator.
+\item \lead{Built-in fidelity check.} Row sums equal the Krylov-projector diagonal, $\sum_j \mhat_{ij}=\sum_r|y_r(i)|^2=(QQ^{\dagger})_{ii}\le 1$; the deficit $1-\sum_j\mhat_{ij}$ is the fraction of residue $i$'s dynamics living outside the captured subspace---a per-residue coverage/fidelity diagnostic (reported with the scalability metric in \S5).
+\item \lead{Exact where it matters.} The source-conditioned column $\mhat[\cdot,S]$---the ranking signal---is reconstructed exactly; accuracy degrades smoothly only for residue pairs spectrally distant from the active site.
+\item \lead{Higher fidelity on demand.} To tighten the off-source blocks, seed a \lead{block/restarted Lanczos} with a few probe sources (the active site plus a small set of residue-indicator probes); the same lift $Y=QV$ then reconstructs the corresponding $N\times N$ blocks.
+\end{itemize}
+\note{Hardware note: only the $K$-space evolution runs on $\lceil\log_2 K\rceil$ qubits; the lift $Q$ is the classical $N\times K$ Lanczos basis, so the back-map is classical post-processing and the qubit count stays length-independent.}
+
 \subsection{Ranking Metric and Hit-list Selection}
 Since $\mhat$ is doubly stochastic, raw connectivity is confounded by centrality (hub residues score high by construction). The ranking metric must be normalized so that it reflects \lead{specific} connectivity to the active site above background---exactly the quantity tested by the challenge's primary objective, extractable directly from $\mhat$:
 \begin{align*}
@@ -195,6 +227,7 @@ Since $\mhat$ is doubly stochastic, raw connectivity is confounded by centrality
 \code{build\_residue\_graph} & \code{apo.pdb} $\rightarrow$ $(E,c)$ & parse apo; build heavy-atom contact edges $E$ ($w_{ij}$); compute per-residue conservation $c_i$ & BioPython, ProDy, fair-esm\\
 \code{assemble\_hamiltonian} & $(E,c,\Phi)\rightarrow H$ & $H_{ij}=w_{ij}e^{i\varphi}$, $H_{ii}=c_i$; symmetrize, z-score; sparse Hermitian & NumPy/SciPy\\
 \code{coarse\_grain} & $(H,S,K)\rightarrow(H_K,Q)$ & active-site-anchored Krylov/Lanczos reduction to fixed $K$; preserves transport dynamics & SciPy\\
+\code{reconstruct\_connectivity} & $(H_K,Q)\rightarrow\mhat$ & Ritz back-map: $H_K{=}V\Theta V^{\dagger}$, $Y{=}QV$, $W_{ir}{=}|Y_{ir}|^2$, $\mhat{=}WW^{\mathsf T}$; lifts $K$-space to the $N\times N$ matrix; returns per-residue coverage & NumPy/SciPy\\
 \code{average\_mixing\_matrix} & $H\rightarrow\mhat$ & eigendecomposition $\rightarrow \mhat=\sum_r E_r\!\circ\!E_r$; deterministic, no training; = connectivity matrix & NumPy\\
 \code{connectivity\_score} & $(\mhat,S,w)\rightarrow s(j)$ & dynamical connectivity of residue $j$ to the active-site set $S$ & NumPy\\
 \code{select\_hits} & $(z,\text{coords},S)\rightarrow$ Top-5 & exclude $S$+neighbors; distal filter; rank by $z(j)$; (optional) cluster + annotate pocketness & fpocket, SciPy, NetworkX\\
@@ -245,8 +278,8 @@ Visualization & PyMOL (3D connectivity map), NetworkX, Matplotlib\\
 % ================= 8. DELIVERABLES =================
 \section{Deliverables}
 \begin{itemize}
-\item \lead{Quantum connectivity matrix:} the $N\times N$ average mixing matrix $\mhat$.
-\item \lead{Top-5 allosteric residue list:} ranked purely by the background-standardized specific connectivity $z(j)$ (residue level, no pocketness); pocketness serves only as a supplementary druggability annotation (see \S3.5).
+\item \lead{Quantum connectivity matrix:} the $N\times N$ average mixing matrix $\mhat$, reconstructed from the $K$-space reduction via the Ritz back-map (\S3.5) or, in the classical-exact track, at $K=N$.
+\item \lead{Top-5 allosteric residue list:} ranked purely by the background-standardized specific connectivity $z(j)$ (residue level, no pocketness); pocketness serves only as a supplementary druggability annotation (see \S3.6).
 \item \lead{Methodology report:} the three-layer quantum positioning (coherent-interference model / hardware credible path / future multi-particle advantage) + evidence of the $e^{-iHt}$ vs.\ $e^{A}$ discriminative power.
 \item \lead{Robustness \& visualization:} QSW noise resilience, coarse-graining scalability, and 3D connectivity maps.
 \end{itemize}
