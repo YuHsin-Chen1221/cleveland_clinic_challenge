@@ -13,6 +13,7 @@
 \usepackage{microtype}
 \usepackage{changepage}
 \usepackage{multicol}
+\usepackage{graphicx}
 \usepackage{quantikz}
 \usepackage[margin=2.2cm,top=2.1cm,bottom=2.0cm]{geometry}
 \usepackage{amsmath,amssymb}
@@ -57,16 +58,18 @@
 Over 85\% of disease-causing proteins are considered undruggable, and for these the only viable
 strategy is allostery. We propose a training-free scanner that takes an apo structure and
 blind-predicts distal regulatory pockets. Contact topology and evolutionary conservation are encoded
-as a sparse Hermitian Hamiltonian, and signal propagation is the circuit $e^{-iHt}$ acting on an
-active-site source state. The readout is the average mixing matrix of that evolution: a deterministic
-spectral object, doubly stochastic, with no free time parameter and no training, which is itself the
-$N\times N$ connectivity matrix the challenge requires. Residues are ranked by degree-deconfounded
-connectivity to the active site, standardised against background, which is the statistic the
-challenge uses for scoring. An active-site-anchored Krylov projection reduces the walk to a
-one-dimensional chain that preserves source-to-residue transport exactly, decoupling qubit count from
-protein length and bounding two-qubit depth independently of system size. Because no parameters are
-fitted, all four targets serve purely as blind tests, and a Lindblad dephasing sweep places the
-classical diffusive baseline at an endpoint of the same model.
+as a sparse Hermitian Hamiltonian carrying a chiral phase, and signal propagation is the circuit
+$e^{-iHt}$ acting on an active-site source state. The readout is the net \emph{directed} current of
+that evolution: the difference between forward and reverse transport, an $N\times N$ directed
+connectivity matrix that is identically zero for any symmetric classical walk, so the signal it
+carries is quantum by construction and no diffusive measure on the same graph can express it.
+Residues are ranked by their directed coupling to the active site, deconfounded of both degree and
+proximity, which is the statistic the challenge scores. An active-site-anchored Krylov projection
+reduces the walk to a one-dimensional chain that preserves source-to-residue transport exactly,
+decoupling qubit count from protein length and bounding two-qubit depth independently of system
+size. Because no parameters are fitted, the targets serve purely as blind tests, and a Lindblad
+dephasing sweep places the classical diffusive baseline at the incoherent endpoint of the same
+model, where the directed signal vanishes.
 \end{adjustwidth}
 \vspace{0.5em}
 
@@ -151,10 +154,15 @@ without adding edges, so $H$ stays sparse and Hermitian and the circuit cost is 
 channel separates the method from purely topological prior work, and is accompanied by an ablation
 against the topology-only configuration.
 
-\emph{Phase $\varphi_{ij}$ --- directionality (optional).} The projection of the lowest
+\emph{Phase $\varphi_{ij}$ --- directionality.} The projection of the lowest
 anisotropic-network-model mode along edge $(i,j)$~\cite{atilgan2001} supplies a complex phase; ANM is
 an analytic eigenproblem of the elastic Hessian, not a sampling procedure, so this stays within the
-no-MD constraint. Channels are z-scored before fusion and asymmetric inputs symmetrised.
+no-MD constraint. This channel is central, not decorative: the directed readout of Section~3.2
+vanishes without it. Channels are z-scored before fusion and asymmetric inputs symmetrised. The walk
+is generated in Laplacian form (off-diagonal $-H_{ij}$ with degree on the diagonal), which the
+ablation selects as giving the strongest directed signal; the topology-plus-phase configuration is
+the working model, and the conservation diagonal is carried as an ablated option rather than a
+default.
 
 Hermiticity holds channel by channel: $c_i$ real gives $H_{ii} = \overline{H_{ii}}$; contacts are
 symmetrised as $(A + A^{\mathsf T})/2$; antisymmetric phases $\varphi_{ji} = -\varphi_{ij}$ give
@@ -164,42 +172,42 @@ physical, we gauge-fix and assert $\lVert H - H^{\dagger}\rVert_F < 10^{-10}$ as
 All inputs derive from apo coordinates and sequence, and the anisotropic modes are an analytic
 eigenproblem rather than MD sampling, so the no-MD constraint is satisfied.
 
-\subsection{Readout: the average mixing matrix}
+\subsection{Readout: the directed connectivity matrix}
 
-The propagator is $U(t) = e^{-iHt}$. Its long-time average mixing matrix is a deterministic spectral
-object~\cite{godsil2013}:
+The propagator is $U(t) = e^{-iHt}$. The deliverable is its net \emph{directed} current at the
+natural time $\tau$ fixed by the spectral bandwidth,
 \begin{equation}
-\Mhat_{ij}
-  = \lim_{T\to\infty}\frac{1}{T}\int_{0}^{T}\bigl|\langle j|e^{-iHt}|i\rangle\bigr|^{2}\,dt
-  = \Bigl(\sum_{r} E_r \circ E_r\Bigr)_{ij},
+J_{ij}(\tau) = \bigl|U_{ij}(\tau)\bigr|^{2} - \bigl|U_{ji}(\tau)\bigr|^{2},
 \end{equation}
-where $E_r$ are the spectral idempotents of $H$ and $\circ$ is the Schur product. $\Mhat$ is doubly
-stochastic, positive semidefinite, carries no free time parameter and requires no training. It is
-delivered directly as the $N\times N$ connectivity matrix. Its quantum content is explicit: $\Mhat$
-is fixed by coherent interference between eigenspaces, and is mathematically distinct from classical
-communicability $e^{A}$~\cite{estrada2008} on the same graph.
-
-Two numerical points bear on the readout. Averaging over all $t$ can suppress the
-constructive-interference peaks that motivate the walk, and the idempotent grouping in~(2) is
-ill-conditioned under near-degenerate spectra. We therefore benchmark $\Mhat$ against a time-resolved
-score on the same graph and report a degeneracy-tolerance scan alongside it, so the choice of readout
-rests on measured discrimination.
+the $N\times N$ directed connectivity matrix the challenge requires. Its defining property is
+diagnostic: $J$ is \emph{identically zero} for real-symmetric (achiral) $H$, so a non-zero directed
+current exists only when the chiral phase breaks time-reversal symmetry. It is therefore a genuinely
+quantum observable that no symmetric classical measure --- communicability $e^{A}$~\cite{estrada2008},
+diffusion $e^{-Lt}$, or the average mixing matrix~\cite{godsil2013} --- can express on the same graph.
+To remove the single-time choice while remaining coherent, we deliver the time-averaged coherent
+current of the quantum stochastic walk at full coherence ($p=0$); communicability and average mixing
+are retained only as classical comparators. The reason this readout, and not a symmetric one, is the
+right object is structural: a proximity-loaded symmetric connectivity ranks hubs and near neighbours,
+whereas allosteric residues are distal, so the directed, coherence-borne current is what separates
+them from background.
 
 \subsection{Ranking metric}
 
-Because $\Mhat$ is doubly stochastic, raw connectivity is confounded by degree: hub residues score
-highly by construction. The ranking metric must therefore express \emph{specific} coupling to the
-active site $S$ relative to background:
+Raw connectivity is confounded by degree and by proximity: hubs and residues near $S$ score highly
+for reasons unrelated to allostery. The ranking metric must express \emph{specific} directed coupling
+to the active site $S$ relative to background:
 \begin{equation}
-s(j) = \sum_{i \in S} w_i \Mhat_{ij}, \qquad
-\rho(j) = \frac{s(j)}{\sum_{k} \Mhat_{kj}}, \qquad
+s(j) = \sum_{i \in S} J_{ij}, \qquad
+\rho(j) = \frac{s(j)}{\sum_{k} |J_{kj}|}, \qquad
 z(j) = \frac{\rho(j) - \mu_{\mathrm{bg}}}{\sigma_{\mathrm{bg}}},
 \end{equation}
-with $\mu_{\mathrm{bg}}$ and $\sigma_{\mathrm{bg}}$ taken from background residues (non-active,
-non-neighbour surface residues and non-functional pockets). The primary ranking statistic $z(j)$ is
-by construction the same quantity the challenge's primary objective tests, which removes any
-mismatch between what we optimise and what we are scored on, and avoids the degenerate solution of
-ranking hubs.
+with $\mu_{\mathrm{bg}},\sigma_{\mathrm{bg}}$ from background residues (non-active, non-neighbour
+surface residues and non-functional pockets). Because allosteric sites are distal by definition, the
+delivered score removes the geometric confound at source: $z(j)$ is standardised within
+C$\alpha$-distance shells from $S$, so the proximity component every transport carries is subtracted
+and what remains is coupling \emph{beyond} geometry. This distance-deconfounded $z(j)$ is the
+delivered ranking, and is by construction the same quantity the challenge's primary objective tests,
+removing any mismatch between what we optimise and what we are scored on.
 
 \lead{Hit selection.} We exclude $S$ and its first neighbours, enforce a distal constraint
 (C$\alpha$--C$\alpha$ $> 12$~\AA\ from $S$), then take the five highest $z(j)$, merging spatially
@@ -229,40 +237,20 @@ ranking, retention under coarse-graining is therefore an algebraic identity, not
 measure, which is what the challenge asks to be demonstrated. Generic spectral clustering
 preserves only generic modes and destroys within-cluster residue resolution~\cite{novo2015}. We use $K = 32$--$64$ for analysis and
 $K = 8$--$16$ on hardware, decoupling qubit count from protein length. The delivered $N \times N$
-$\Mhat$ is computed by exact eigendecomposition at full resolution (single-particle walks live in $N$
-dimensions, so this is polynomial and trivial for $N \approx 300$--$1000$); the Krylov route supplies
-the hardware track, and agreement between the two is a required consistency check.
+directed matrix $J$ is computed by exact matrix exponential at full resolution (single-particle walks
+live in $N$ dimensions, so this is polynomial and trivial for $N \approx 300$--$1000$); the Krylov
+route supplies the hardware track, and agreement between the two is a required consistency check.
 
 \subsection{Back-mapping the reduction to the $N\times N$ matrix}
 
-The reduction runs the walk in $K$ dimensions, whereas the deliverable is the $N\times N$ residue
-matrix; the Lanczos isometry $Q$, whose columns already live in residue space, connects them.
-Diagonalising the small tridiagonal projection $H_K = V\Theta V^{\dagger}$
-($\Theta = \operatorname{diag}(\theta_r)$, an $O(K^2)$ step) and lifting each Ritz vector to
-\begin{equation}
-|y_r\rangle = Q v_r \in \mathbb{C}^{N}, \qquad Y = QV \ (N\times K),
-\end{equation}
-yields $K$ approximate eigenpairs $(\theta_r, y_r)$ of $H$ that reproduce exactly the spectral content
-reachable from $|\psi_S\rangle$. The propagator restricted to the subspace is
-$\tilde U(t) = Q\,e^{-iH_K t}\,Q^{\dagger} = Y\,e^{-i\Theta t}\,Y^{\dagger}$; time-averaging
-$|\tilde U_{ji}(t)|^{2}$ collapses the cross terms at non-degenerate Ritz values, so the connectivity
-matrix is a Gram product of squared Ritz amplitudes,
-\begin{equation}
-\Mhat_{ij} = \sum_{r=1}^{K} |y_r(i)|^{2}\,|y_r(j)|^{2} = (W W^{\mathsf T})_{ij}, \qquad
-W_{ir} \equiv |y_r(i)|^{2},
-\end{equation}
-a single $N\times K$ matrix and one product, symmetric and positive semidefinite by construction.
-
-\lead{Why this is the natural decode.} As $K \to N$ the Ritz pairs become exact eigenpairs and
-$W W^{\mathsf T}$ becomes the exact average mixing matrix of Section~3.2, so the full-resolution
-deliverable and the hardware-track reconstruction are one estimator at two truncations, not two
-methods. Row sums equal the Krylov-projector diagonal,
-$\sum_j \Mhat_{ij} = \sum_r |y_r(i)|^{2} = (Q Q^{\dagger})_{ii} \le 1$, and the deficit
-$1 - \sum_j \Mhat_{ij}$ is the fraction of residue $i$'s dynamics lying outside the captured
-subspace: a per-residue coverage diagnostic reported alongside the coarse-graining fidelity of
-Section~5. The source column $\Mhat[\cdot, S]$ that the ranking consumes is reconstructed exactly,
-error appearing only for residue pairs spectrally distant from the active site; block or restarted
-Lanczos with a few probe sources tightens those off-source blocks through the same lift $Y = QV$. On
+The walk runs in $K$ dimensions, whereas the deliverable is the $N\times N$ residue matrix; the
+Lanczos isometry $Q$, whose columns already live in residue space, connects them. The directed
+current is read in the $K$-dimensional chain and lifted to residues by $|Q|^{2}$; by the exactness
+identity~(5), the source column that the ranking consumes is reconstructed exactly, error appearing
+only for residue pairs spectrally distant from the active site. As $K \to N$ the reduction becomes the
+full-resolution readout, so the classical deliverable and the hardware-track reconstruction are one
+estimator at two truncations, not two methods. The per-residue coverage $(Q Q^{\dagger})_{ii}\le 1$
+is reported as a truncation diagnostic alongside the coarse-graining fidelity of Section~5. On
 hardware only the $K$-dimensional evolution is executed; $Q$ is a classical $N\times K$ matrix, so
 back-mapping is post-processing and adds nothing to the qubit budget.
 
@@ -279,14 +267,14 @@ parameter $p \in [0,1]$:
 \end{equation}
 with jump operators $L_{ij} = \sqrt{\gamma_{ij}}\,|i\rangle\langle j|$ acting only along existing
 edges, so both channels share the same topology. At $p \to 0$ only the von Neumann term survives and
-the dynamics is the coherent walk $e^{-iHt}$; at $p \to 1$ the diagonal elements obey the classical
-master equation with generator $L$, giving $e^{-Lt}$. Sweeping $p$ serves three purposes at once: it is the \emph{ablation}, since the classical
-control is our own endpoint on an identical graph and generator, not a separate model; it is
-the \emph{noise-resilience study}, since environment-assisted transport predicts an interior optimum
-on disordered graphs~\cite{rebentrost2009}; and it answers the challenge's observation that
-classical approximations are too linear. We additionally report
-$\Delta(j) = \Mhat[S,j] - e^{A}[S,j]$ to isolate the interference contribution against classical
-communicability.
+the dynamics is the coherent walk $e^{-iHt}$; at $p \to 1$ the populations obey the classical master
+equation with generator $L$, giving $e^{-Lt}$. The sweep is the \emph{ablation} and the
+\emph{noise-resilience study} at once, since the classical control is our own endpoint on an
+identical graph and generator, not a separate model. Its outcome is also the central evidence: the
+directed current is zero at the incoherent endpoint, so the ranking decays from its coherent value to
+chance as $p \to 1$. Environment-assisted transport predicts an interior optimum~\cite{rebentrost2009};
+we test for one rather than assume it, and finding the coherent endpoint optimal is itself evidence
+that the signal is carried by coherence, not a failed search.
 
 \subsection{Learning components and quantum advantage}
 
@@ -333,67 +321,66 @@ single-qubit rotations. Measurement is in the computational basis; shots outside
 are discarded.}
 \end{figure}
 
-\begin{table}[t]
-\caption{Circuit cost and coherence budget. Duration assumes ${\sim}120$\,ns per two-qubit layer;
-bare fidelity is $(0.994)^{n_{2Q}}$ at a representative superconducting two-qubit error rate. Device
-values are read from Braket device properties at run time.}
-\footnotesize
-\begin{tabularx}{\textwidth}{@{}lcccccX@{}}
-\toprule
-\textbf{Config.} & \textbf{Qubits} & \textbf{2Q gates} & \textbf{2Q depth} & \textbf{Duration} & \textbf{Bare fidelity} & \textbf{Role}\\
-\midrule
-$K=8$, $r=10$   & 8  & 140  & 40 & ${\sim}5\,\mu$s  & $0.43$   & Headline hardware run\\
-$K=16$, $r=10$  & 16 & 300  & 40 & ${\sim}5\,\mu$s  & $0.16$   & Hardware, with post-selection\\
-$K=16$, $r=20$  & 16 & 600  & 80 & ${\sim}10\,\mu$s & $0.03$   & Trotter convergence, simulator\\
-$K=32$, $r=20$  & 32 & 1240 & 80 & ${\sim}10\,\mu$s & $<0.01$  & Simulator only\\
-\bottomrule
-\end{tabularx}
-\end{table}
+\begin{figure}[t]
+\centering
+\begin{minipage}[t]{0.49\textwidth}\centering
+  \includegraphics[width=\linewidth]{figs/prop_fig_coherence.png}\\[-2pt]
+  {\footnotesize\textbf{(a)} coherence budget}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.49\textwidth}\centering
+  \includegraphics[width=\linewidth]{figs/prop_fig_resource.png}\\[-2pt]
+  {\footnotesize\textbf{(b)} resource scaling}
+\end{minipage}
+\caption{The coherence-time limitation, quantified on the current model. \textbf{(a)} Systematic
+Trotter error falls with circuit depth $r$ while decoherence infidelity rises; their sum is minimised
+at an optimal depth $r^{*}$ that grows as $\sqrt{T_2}$. The ranking converges well inside $r^{*}$, so
+a hardware demonstration sits within the coherence budget. \textbf{(b)} Unary qubit count equals
+residue count and two-qubit gate count scales with contact edges: small targets are demonstrable on
+near-term devices, larger ones are delivered on the exact classical track.}
+\label{fig:budget}
+\end{figure}
 
-\lead{Reading the coherence budget.} Two limits must be separated. Circuit \emph{duration} sits
-comfortably inside coherence: ${\sim}5\,\mu$s against superconducting $T_2$ of tens of microseconds
-is a ratio of ${\sim}0.1$, so the walk does not decohere mid-evolution. The binding constraint is
-\emph{accumulated gate error}: 300 two-qubit gates at $99.4\%$ leave a bare success probability of
-$0.16$. Hence the headline run is $K=8$ and not the largest circuit we can write, $r$ is the smallest
-value passing a simulator Trotter-convergence test, and $K=32$ is declared simulator-only. Post-selection on
-excitation number turns much of the residual error into \emph{discarded} shots instead of biased estimates,
-which is why it is the primary mitigation and ZNE only the secondary one.
+\lead{Reading the coherence budget.} Two errors must be separated (Fig.~\ref{fig:budget}a). The
+systematic Trotter error falls with depth; decoherence rises with it; their sum sets an optimal depth
+$r^{*}\propto\sqrt{T_2}$. What makes the method feasible is that the \emph{ranking} converges at a
+depth well below $r^{*}$, so the walk is read before it decoheres. The binding constraint is
+accumulated gate error rather than duration, which fixes the headline run at the smallest $K$ and the
+smallest Trotter number passing a simulator convergence test and declares the large-$K$ circuits
+simulator-only. Post-selection on excitation number turns much of the residual error into discarded
+shots rather than biased estimates, making it the primary mitigation and ZNE the secondary one.
 
-\lead{Readout, platform and budget.} Sampling 64 quasi-random evolution times gives $\Mhat[S,\cdot]$
+\lead{Readout, platform and budget.} Sampling a few evolution times gives the source row of $J$
 directly, since the excited qubit labels the Krylov basis vector; results project back to residues by
-$Q$. Shot counts assume 2000 shots per time point with a $1.5\times$ post-selection allowance, giving
-${\sim}1\%$ absolute error on probabilities of order $1/K$. Because the chain is one-dimensional, all-to-all connectivity buys us
-nothing: superconducting devices on Braket (IQM, Rigetti) are both the technical and economic fit,
-with per-shot rates one to two orders of magnitude below trapped-ion alternatives, and program sets
-allow the 64 time points to go as a single task. Classiq provides depth-constrained synthesis across
-Trotter orders under a fixed coherence budget; we report depth before and after optimisation rather
-than merely noting the tool was used. A full campaign (SV1 validation, DM1 noise modelling at
-$K \le 12$, a headline run with zero-noise extrapolation, a $K$-scaling study, a second target and a
-cross-platform check) totals roughly $1.5\times10^{6}$ shots, on the order of a minute of pure QPU
-time; it is dominated by queueing and classical pre/post-processing, not device time.
+$Q$. Because the chain is one-dimensional, all-to-all connectivity buys nothing: superconducting
+devices on Braket (IQM, Rigetti) are the technical and economic fit, with per-shot rates well below
+trapped-ion alternatives, and the time points go as a single program set. Classiq supplies
+depth-constrained synthesis under a fixed coherence budget, reported before and after optimisation. A
+full campaign --- simulator validation, noise modelling at $K \le 12$, a headline run with zero-noise
+extrapolation, a $K$-scaling study and a cross-platform check --- is on the order of a minute of pure
+QPU time, dominated by queueing and classical processing.
 
 % =====================================================================
 \section{Implementation Plan}
 
 Phase~I delivers this specification; Phase~II builds and validates it. The circuit of Section~3.8 is
-the defining construction; because its single-excitation sector is exactly solvable, the same $\Mhat$
-is computed classically at full resolution, serving as both deliverable and hardware reference, so no
-milestone depends on device availability.
+the defining construction; because its single-excitation sector is exactly solvable, the same directed
+matrix $J$ is computed classically at full resolution, serving as both deliverable and hardware
+reference, so no milestone depends on device availability.
 
 \begin{enumerate}
 \item \lead{Structure and features.} Fetch apo structures, select the catalytic domain, strip waters
       and heteroatoms, build the heavy-atom contact graph, and compute per-residue conservation.
 \item \lead{Hamiltonian assembly.} Fuse magnitudes, diagonal and optional phases with z-score
       normalisation; gauge-fix; assert Hermiticity.
-\item \lead{Readout.} Exact eigendecomposition to $\Mhat$, with the degeneracy-tolerance scan and the
-      time-resolved comparison.
+\item \lead{Readout.} Exact matrix exponential to the directed current $J$, delivered as its
+      time-averaged coherent form.
 \item \lead{Ranking.} Compute $s$, $\rho$ and $z$; apply distal and neighbour filters; return the top
       five residues with optional pocket annotation.
 \item \lead{Coherence sweep.} Lindblad dephasing scan from $p = 0$ to $p = 1$, reported against
       $e^{A}$ and $e^{-Lt}$.
 \item \lead{Validation.} Blind runs on the four targets, then extended generalisation runs, against
       all baselines in Section~5.
-\item \lead{Hardware.} Execute the circuits of Section~3.8 on Braket, verifying the quantum $\Mhat$
+\item \lead{Hardware.} Execute the circuits of Section~3.8 on Braket, verifying the quantum $J$
       against the classical one under post-selection and zero-noise extrapolation.
 \end{enumerate}
 
@@ -405,25 +392,28 @@ milestone depends on device availability.
 \textbf{Purpose} & \textbf{Source or tool}\\
 \midrule
 Required targets & RCSB PDB: 4OBE$\to$6OIM, 1OPL$\to$5MO4, 5TBY$\to$6C1H, 1NKP (c-Myc)\\
-Calibration and generalisation & ASD, ASBench, CASBench; leave-one-protein-out, disjoint from targets\\
+Calibration set & ASD, AlloBench: deduplicated by UniProt, length-binned, fixed seed; disjoint from targets\\
 Structure and features & BioPython, ProDy (contact graph, ANM modes), fair-esm (ESM-2 conservation)\\
-Simulation and readout & NumPy / SciPy eigendecomposition for $\Mhat$; QuTiP for the Lindblad sweep\\
+Simulation and readout & NumPy / SciPy matrix exponential for $J$; QuTiP for the Lindblad sweep\\
 Circuits and hardware & Qiskit, AWS Braket SDK, Classiq (synthesis, depth optimisation), Mitiq (ZNE)\\
 Baselines and output & fpocket, NetworkX, ProDy GNM centrality; PyMOL and browser viewer; LLM brief\\
 \bottomrule
 \end{tabularx}
 \end{table}
 
-\lead{Schedule (17 Nov 2026 to 28 Feb 2027).} Weeks 1--3, structure pipeline, Hamiltonian assembly,
-classical baselines. Weeks 4--6, $\Mhat$ readout, ranking metric, degeneracy and time-resolved
-comparisons. Weeks 7--8, blind runs with full statistics. Weeks 9--10, coherence sweep and
-calibration. Weeks 11--12, generalisation on ASD. Week 13, hardware demonstration. Weeks 14--15,
-interpretation layer, visualisation, final report.
+\lead{Data processing and calibration set.} Structures are reduced to a single chain, stripped of
+waters and heteroatoms, and mapped to a C$\alpha$ contact graph; UniProt active-site annotations are
+aligned to the resolved sequence. Ground truth is frozen by the challenge rule --- residues with a
+heavy atom within $4.5$~\AA\ of an allosteric-ligand heavy atom in the superposed holo structure. The
+calibration set is drawn from the pooled ASD and AlloBench allosteric entries, deduplicated by UniProt
+and stratified into length bins under a fixed seed, giving ten proteins that span the size range and
+are disjoint from the blind targets; thresholds are fixed on it by leave-one-protein-out. No labels
+enter the predictor, so the set calibrates but does not train.
 
-\lead{Deliverables.} (i) The $N\times N$ connectivity matrix $\Mhat$ at full residue resolution.
+\lead{Deliverables.} (i) The $N\times N$ directed connectivity matrix $J$ at full residue resolution.
 (ii) Ranked top-five allosteric residues per target by $z(j)$. (iii) This methodological report,
-identifying $\Mhat$ as the quantum metric and coherent interference between eigenspaces as its link
-to biological signal transmission. (iv) An interactive 3D connectivity map showing the protein
+identifying the directed current as the quantum metric and its vanishing in the classical limit as
+its link to biological signal transmission. (iv) An interactive 3D connectivity map showing the protein
 coloured by $z(j)$ with predicted site and propagation paths, in PyMOL and a browser viewer. The map,
 not the matrix, is the artefact a chemist acts on, and the language-model brief accompanies it.
 
@@ -471,14 +461,14 @@ $0.87$~\cite{meller2023} as the learned reference, and a random ranking. The two
 and generator are decisive, since they separate the contribution of interference from that of graph
 structure. Ablations remove one component at a time: the conservation diagonal, the chiral phase, the
 degree deconfounding in $\rho(j)$, and the background standardisation, with the readout additionally
-swapped between $\Mhat$ and a time-resolved score. Each ablation is reported as a $\Delta$ROC-AUC so
-the contribution of every channel is quantified.
+swapped between the directed current and its symmetric classical comparators. Each ablation is
+reported as a $\Delta$ROC-AUC so the contribution of every channel is quantified.
 
 \lead{Robustness.} Noise resilience is assessed on the metric, not only on the state. We sweep the dephasing parameter
 $p$, simulate gate-error and finite-coherence models on DM1 at $K\le 12$, and report the Spearman
 correlation between noisy and noiseless $z(j)$ with the top-5 overlap: what matters is whether the
 ranking survives, not whether the state does. Coarse-graining fidelity uses the same two measures
-between full-resolution $\Mhat$ and its Krylov reduction across $K=8,12,16,32,64$, complementing the
+between full-resolution $J$ and its Krylov reduction across $K=8,12,16,32,64$, complementing the
 exactness identity of~(5) with an empirical curve showing where truncation begins to matter.
 
 \lead{Blind protocol and reproducibility.} No parameters are fitted to data, so leakage is structurally limited. The thresholds come from
@@ -500,14 +490,15 @@ allosteric precedent: the population supervised predictors serve worst.
 interference gain over $e^{A}$ and $e^{-Lt}$ on the same graph; runtime per target; top-5 hit rate
 and distance to the true site; and generalisation on untouched ASD targets.
 
-\lead{Risks.} Time-averaging may suppress the interference peaks that motivate the walk, which is why
-a time-resolved score is benchmarked alongside $\Mhat$. Near-degenerate spectra make the idempotent
-grouping in~(2) numerically delicate, addressed by tolerance scanning. The conservation prior is the
-largest exposure to the ab-initio-from-topology requirement, hence the parallel topology-only run.
-The elastic-network assumption is weakest for c-Myc, which is nonetheless delivered as a required
-target with pocket annotation disabled. Finally, interference may add nothing, in which case the
-sweep returns $p^{*}=1$; that is a controlled negative result on a question the challenge itself
-raises, and the classical pipeline remains a working deliverable.
+\lead{Risks.} The directed current depends on the chiral phase, so a target whose functional motion
+is poorly captured by the lowest ANM mode weakens the signal; the phase construction and the time
+window are therefore reported with sensitivity sweeps. The conservation diagonal is the largest
+exposure to the ab-initio-from-topology requirement, which is why the working model is topology and
+phase only, with the diagonal entering as an ablation. The elastic-network assumption is weakest for
+c-Myc, which is nonetheless delivered as a required target with pocket annotation disabled. Finally,
+coherence may carry little signal on a given target, in which case the sweep flattens toward chance;
+that is a controlled outcome on a question the challenge itself raises, and the classical pipeline
+remains a working deliverable.
 
 % =====================================================================
 \footnotesize
